@@ -41,6 +41,46 @@
                 </div>
                 <p class="afterpay">or 4 interest-free payments of $22.50 with afterpay</p>
                 <button class="bidit-button" onclick="openBidModal()">Bidit</button>
+                <div id="bid-modal" class="inline-bid-section hidden">
+                  <div class="modal-content">
+                    <div id="hotColdMeter" class="hidden">🔥 You're cold</div>
+                    <!-- <span class="close" onclick="closeBidModal()">&times;</span> -->
+                    <!--
+                    <div id="step1">
+                      <h3>Enter your email to start bidding</h3>
+                      <input type="email" id="bid-email" placeholder="you@example.com">
+                      <button onclick="startBidding()">Continue</button>
+                    </div>
+                    -->
+                    <div id="step2" class="hidden">
+                      <div class="bids_price">
+                        <p>Full Price: $180.00</p>
+                        <p>2 bids remaining</p>
+                      </div>
+                      <input type="number" id="bid-amount" placeholder="Enter your bid ($)">
+                      <button onclick="submitBid()">Submit Bid</button>
+                    </div>
+                    <div id="step3" class="hidden">
+                      <p id="bid-result"></p>
+                      <button id="secondBidBtn" onclick="showSecondBid()">Try Again</button>
+                    </div>
+                    <div id="step4" class="hidden">
+                      <input type="number" id="second-bid-amount" placeholder="Enter new bid ($)">
+                      <button onclick="submitSecondBid()">Submit Final Bid</button>
+                    </div>
+                    <div id="success" class="hidden">
+                      <h3>🎉 Your bid was successful!</h3>
+                      <div class="countdown-wrapper">
+                        <div id="countdown-timer" class="digital-timer">30</div>
+                        <p class="countdown-message">Complete checkout before the timer runs out</p>
+                      </div>
+                    </div>
+                    <div id="fail" class="hidden">
+                      <h3>Sorry! You missed out.</h3>
+                      <p>Use code <strong>TRYAGAIN10</strong> for 10% off.</p>
+                    </div>
+                  </div>
+                </div>
                 <label>Colour: White</label>
                 <div class="circle white"></div>
                 <label>Size:</label>
@@ -70,48 +110,6 @@
         </div>
     </main>
 
-<div id="bid-modal" class="modal hidden">
-  <div class="modal-content">
-    <span class="close" onclick="closeBidModal()">&times;</span>
-    <!--
-    <div id="step1">
-      <h3>Enter your email to start bidding</h3>
-      <input type="email" id="bid-email" placeholder="you@example.com">
-      <button onclick="startBidding()">Continue</button>
-    </div>
-    -->
-    <div id="step2" class="hidden">
-      <div class="bids_price">
-        <p>RRP: $180.00</p>
-        <p>2 bids remaining</p>
-      </div>
-      <input type="number" id="bid-amount" placeholder="Enter your bid ($)">
-      <div id="hotColdMeter" class="hidden">🔥 You're cold</div>
-      <button onclick="submitBid()">Submit Bid</button>
-    </div>
-    <div id="step3" class="hidden">
-      <p id="bid-result"></p>
-      <button id="secondBidBtn" onclick="showSecondBid()">Try Again</button>
-    </div>
-    <div id="step4" class="hidden">
-      <input type="number" id="second-bid-amount" placeholder="Enter new bid ($)">
-      <button onclick="submitSecondBid()">Submit Final Bid</button>
-    </div>
-    <div id="success" class="hidden">
-      <h3>🎉 Your bid was successful!</h3>
-      <div class="countdown-wrapper">
-        <div id="countdown-timer" class="digital-timer">30</div>
-        <p class="countdown-message">Complete checkout before the timer runs out</p>
-      </div>
-      <button id="add-to-cart-btn">Checkout instantly with BidIt</button>
-    </div>
-    <div id="fail" class="hidden">
-      <h3>Sorry! You missed out.</h3>
-      <p>Use code <strong>TRYAGAIN10</strong> for 10% off.</p>
-    </div>
-  </div>
-</div>
-
 <script>
 function updateHotColdFeedback(bid) {
   const hotColdMeter = document.getElementById('hotColdMeter');
@@ -136,50 +134,60 @@ function updateHotColdFeedback(bid) {
   }
 }
 
+function placeHotColdBelow(el) {
+  const meter = document.getElementById('hotColdMeter');
+  el.insertAdjacentElement('afterend', meter);
+}
+
 let bidCount = 0;
 const maxBidsPerSession = 2;
 let acceptedPrice = 110;
 
 function openBidModal() {
   const modal = document.getElementById('bid-modal');
-  modal.classList.remove('hidden');
 
-  /* --- Reset session state --- */
+  if (!modal.classList.contains('hidden')) {
+    modal.classList.add('hidden');
+    return;
+  }
+
+  modal.classList.remove('hidden');
   bidCount = 0;
 
-  /* Hide all step/final states */
   ['step2', 'step3', 'step4', 'success', 'fail'].forEach(id => {
     const el = document.getElementById(id);
     el && el.classList.add('hidden');
   });
 
-  /* Reset inputs & feedback */
   const hotCold = document.getElementById('hotColdMeter');
   hotCold.classList.add('hidden');
   hotCold.textContent = '';
 
-  const bidInput = document.getElementById('bid-amount');
-  bidInput.value = '';
-  bidInput.oninput = e => updateHotColdFeedback(parseFloat(e.target.value));
+  document.getElementById('step2').classList.remove('hidden');
+  placeHotColdBelow(document.getElementById('bid-amount'));
 
-  const secondInput = document.getElementById('second-bid-amount');
-  if (secondInput) secondInput.value = '';
+  setTimeout(() => {
+    const bidInput = document.getElementById('bid-amount');
+    if (bidInput) {
+      bidInput.value = '';
+      bidInput.oninput = e => updateHotColdFeedback(parseFloat(e.target.value));
+    }
 
-  /* Restore Add‑to‑Cart button if it was removed by previous timer expiry */
+    const secondInput = document.getElementById('second-bid-amount');
+    if (secondInput) secondInput.value = '';
+  }, 10);
+
   if (!document.getElementById('add-to-cart-btn')) {
     const btn = document.createElement('button');
     btn.id = 'add-to-cart-btn';
     btn.textContent = 'Checkout instantly with BidIt';
+    btn.className = 'checkout-bidit-btn inline-bid-section-button';
     document.getElementById('success').appendChild(btn);
   }
-
-  /* Show first bid step */
-  document.getElementById('step2').classList.remove('hidden');
 }
 
 function closeBidModal() {
   document.getElementById('bid-modal').classList.add('hidden');
-  document.querySelectorAll('#bid-modal .modal-content > div').forEach(div => div.classList.add('hidden'));
 }
 
 function startBidding() {
@@ -191,61 +199,90 @@ function startBidding() {
 
 function submitBid() {
   const bid = parseFloat(document.getElementById('bid-amount').value);
+  updateHotColdFeedback(bid);
   if (bid > 180) {
     alert('Bid cannot exceed the RRP of $180.');
     return;
   }
   bidCount++;
-  updateHotColdFeedback(bid);
 
-  if (bid >= 160 && bid < 180) {
+  if (bid >= 160 && bid <= 180) {
+    document.getElementById('hotColdMeter').classList.add('hidden');
     showSuccess();
   } else if (bid >= 140 && bid < 160) {
     const lucky = Math.random() < 0.5;
     if (lucky) {
+      document.getElementById('hotColdMeter').classList.add('hidden');
       showSuccess();
     } else {
       document.getElementById('step2').classList.add('hidden');
       document.getElementById('step3').classList.remove('hidden');
       document.getElementById('bid-result').textContent = `Your bid of $${bid} was too low.`;
+      placeHotColdBelow(document.getElementById('bid-result'));
       if (bidCount >= maxBidsPerSession) document.getElementById('secondBidBtn').classList.add('hidden');
     }
   } else {
     document.getElementById('step2').classList.add('hidden');
     document.getElementById('step3').classList.remove('hidden');
     document.getElementById('bid-result').textContent = `Your bid of $${bid} was too low.`;
+    placeHotColdBelow(document.getElementById('bid-result'));
     if (bidCount >= maxBidsPerSession) document.getElementById('secondBidBtn').classList.add('hidden');
   }
 }
 
 function showSecondBid() {
+  // Switch to final‑bid step
   document.getElementById('step3').classList.add('hidden');
   document.getElementById('step4').classList.remove('hidden');
+
+  // Position the meter under the new input and hide it
+  const secondInput = document.getElementById('second-bid-amount');
+  placeHotColdBelow(secondInput);
+  // Make sure the meter starts fully hidden and cleared for the final‑bid step
+  const meter = document.getElementById('hotColdMeter');
+  meter.classList.add('hidden');
+  meter.textContent = '';
+
+  // Clear any previous value and attach live feedback
+  secondInput.value = '';
+  secondInput.oninput = e => {
+    const val = parseFloat(e.target.value);
+    updateHotColdFeedback(val);
+    // ensure meter shows only when there is valid numeric input
+    if (!isNaN(val) && val !== '') {
+      document.getElementById('hotColdMeter').classList.remove('hidden');
+    }
+  };
 }
 
 function submitSecondBid() {
   const bid = parseFloat(document.getElementById('second-bid-amount').value);
+  updateHotColdFeedback(bid);
+  placeHotColdBelow(document.getElementById('second-bid-amount'));
   if (bid > 180) {
     alert('Bid cannot exceed the RRP of $180.');
     return;
   }
   bidCount++;
-  updateHotColdFeedback(bid);
 
   document.getElementById('step4').classList.add('hidden');
   if (bid >= 160 && bid < 180) {
+    document.getElementById('hotColdMeter').classList.add('hidden');
     showSuccess();
   } else if (bid >= 140 && bid < 160) {
     const lucky = Math.random() < 0.5;
     if (lucky) {
+      document.getElementById('hotColdMeter').classList.add('hidden');
       showSuccess();
     } else {
       document.getElementById('step4').classList.add('hidden');
       document.getElementById('fail').classList.remove('hidden');
+      document.getElementById('hotColdMeter').classList.add('hidden');
     }
   } else {
     document.getElementById('step4').classList.add('hidden');
     document.getElementById('fail').classList.remove('hidden');
+    document.getElementById('hotColdMeter').classList.add('hidden');
   }
 }
 
