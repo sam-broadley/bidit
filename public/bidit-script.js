@@ -235,38 +235,37 @@
     existingButtons.forEach(button => {
       // Apply consistent styling to existing buttons
       button.innerHTML = `
-        <img 
-          src="https://res.cloudinary.com/stitchify/image/upload/v1752899998/vnxne8rzryvm4paahoqj.png" 
-          alt="BidIt" 
-          style="height: 20px; width: auto;"
-        />
-        <span style="font-weight: 500; font-size: 14px;">Make an offer</span>
-      `;
-      
-      // Apply comprehensive styling that overrides merchant CSS
-      button.style.cssText = `
-        background: #F0783C !important;
-        color: white !important;
-        border: none !important;
-        padding: 12px 24px !important;
-        border-radius: 50px !important;
-        font-weight: 600 !important;
-        margin-top: 10px !important;
-        width: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-        box-shadow: 0 2px 8px rgba(240, 120, 60, 0.3) !important;
-        transition: all 0.3s ease !important;
-        cursor: pointer !important;
-        text-decoration: none !important;
-        outline: none !important;
-        position: relative !important;
-        z-index: 1 !important;
-        min-height: 48px !important;
-        box-sizing: border-box !important;
-      `;
+      <img 
+        src="https://res.cloudinary.com/stitchify/image/upload/v1752902760/b5ltsnlhwpan9rhknbir.png" 
+        alt="BidIt" 
+        style="height: 20px; width: auto;"
+      />
+      <span style="font-weight: 500; font-size: 14px;">Make an offer</span>
+    `;
+    
+    // Apply comprehensive styling that overrides merchant CSS
+    button.style.cssText = `
+      background: #FFF!important;
+      color: white !important;
+      border: #99999960 1px solid !important;
+      padding: 12px 24px !important;
+      border-radius: 0px !important;
+      font-weight: 600 !important;
+      margin-top: 10px !important;
+      width: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      transition: all 0.3s ease !important;
+      cursor: pointer !important;
+      text-decoration: none !important;
+      outline: none !important;
+      position: relative !important;
+      z-index: 1 !important;
+      min-height: 48px !important;
+      box-sizing: border-box !important;
+    `;
       
       // Add hover effects
       button.addEventListener('mouseenter', function() {
