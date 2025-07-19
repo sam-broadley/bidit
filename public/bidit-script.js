@@ -6,17 +6,13 @@
   
   // Default configuration
   const defaults = {
-    modalUrl: 'https://bidit-tau.vercel.app',
     productId: '',
     variantId: '',
     productTitle: '',
     productPrice: 0,
     userId: '',
     buttonSelector: '[data-bidit-button]',
-    buttonText: 'Try BidIt - Make an Offer',
-    modalStyle: 'dropdown', // Default to dropdown for better UX
-    modalWidth: '450px',    // Slightly wider for better content display
-    modalHeight: '650px'    // Taller to accommodate full content
+    buttonText: 'Try BidIt - Make an Offer'
   };
 
   // Merge config with defaults
@@ -66,105 +62,22 @@
     return { currentVariantId, currentPrice };
   }
 
-  // Create modal iframe
-  function createModal(triggerButton = null) {
-    const iframe = document.createElement('iframe');
+  // Open modal by dispatching a custom event
+  function openModal(triggerButton = null) {
     const { currentVariantId, currentPrice } = getCurrentVariantInfo();
     
-    iframe.src = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
-    
-    // Determine modal positioning based on style
-    if (settings.modalStyle === 'dropdown' && triggerButton) {
-      // Dropdown style - position below the button
-      const buttonRect = triggerButton.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
-      // Calculate position
-      let left = buttonRect.left;
-      let top = buttonRect.bottom + 10; // 10px gap below button
-      
-      // Ensure modal doesn't go off-screen
-      let modalWidth = parseInt(settings.modalWidth);
-      let modalHeight = parseInt(settings.modalHeight);
-      
-      // Responsive sizing for mobile devices
-      if (viewportWidth < 768) {
-        modalWidth = Math.min(modalWidth, viewportWidth - 40); // 20px margin on each side
-        modalHeight = Math.min(modalHeight, viewportHeight - 40); // 20px margin on top/bottom
-      }
-      
-      // Adjust horizontal position if needed
-      if (left + modalWidth > viewportWidth) {
-        left = viewportWidth - modalWidth - 20; // 20px margin from edge
-      }
-      if (left < 20) left = 20; // Minimum 20px from left edge
-      
-      // Adjust vertical position if needed
-      if (top + modalHeight > viewportHeight) {
-        // Show above button instead
-        top = buttonRect.top - modalHeight - 10;
-        if (top < 20) top = 20; // Minimum 20px from top edge
-      }
-      
-      iframe.style.cssText = `
-        position: fixed;
-        top: ${top}px;
-        left: ${left}px;
-        width: ${settings.modalWidth};
-        height: ${settings.modalHeight};
-        border: none;
-        border-radius: 12px;
-        z-index: 999999;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        background: white;
-      `;
-    } else {
-      // Fullscreen style (default)
-      iframe.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        border: none;
-        z-index: 999999;
-        background: rgba(0, 0, 0, 0.5);
-      `;
-    }
-    
-    iframe.id = 'bidit-modal-iframe';
-    
-    // Handle modal close
-    window.addEventListener('message', function(event) {
-      if (event.origin !== settings.modalUrl) return;
-      
-      if (event.data.type === 'BIDIT_CLOSE') {
-        closeModal();
+    // Create and dispatch a custom event to open the React modal
+    const modalEvent = new CustomEvent('openBidItModal', {
+      detail: {
+        shopifyProductId: settings.productId,
+        shopifyVariantId: currentVariantId || '',
+        productTitle: settings.productTitle,
+        productPrice: currentPrice,
+        userId: settings.userId
       }
     });
-
-    return iframe;
-  }
-
-  // Open modal
-  function openModal(triggerButton = null) {
-    const iframe = createModal(triggerButton);
-    document.body.appendChild(iframe);
     
-    // Only hide body overflow for fullscreen mode
-    if (settings.modalStyle === 'fullscreen') {
-      document.body.style.overflow = 'hidden';
-    }
-  }
-
-  // Close modal
-  function closeModal() {
-    const iframe = document.getElementById('bidit-modal-iframe');
-    if (iframe) {
-      iframe.remove();
-      document.body.style.overflow = '';
-    }
+    window.dispatchEvent(modalEvent);
   }
 
   // Create BidIt button
@@ -296,13 +209,6 @@
       }
     }
 
-    // Add global close handler
-    document.addEventListener('keydown', function(event) {
-      if (event.key === 'Escape') {
-        closeModal();
-      }
-    });
-
     // Listen for variant changes
     function setupVariantChangeListeners() {
       // Common Shopify variant selectors
@@ -311,69 +217,35 @@
         'select[data-variant-select]',
         '.single-option-selector',
         'input[name="id"]',
-        'input[data-variant-id]',
-        '[data-variant-selector]'
+        'input[data-variant-id]'
       ];
-
+      
       variantSelectors.forEach(selector => {
         const elements = document.querySelectorAll(selector);
         elements.forEach(element => {
           element.addEventListener('change', function() {
             console.log('Variant changed:', this.value);
-            // Update any existing modal with new variant info
-            const iframe = document.getElementById('bidit-modal-iframe');
-            if (iframe) {
-              const { currentVariantId, currentPrice } = getCurrentVariantInfo();
-              const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
-              iframe.src = newSrc;
-            }
+            // You could update button text or styling here if needed
           });
         });
       });
-
-      // Listen for Shopify's custom variant change events
-      document.addEventListener('variant:change', function(event) {
-        console.log('Shopify variant change event:', event);
-        const iframe = document.getElementById('bidit-modal-iframe');
-        if (iframe) {
-          const { currentVariantId, currentPrice } = getCurrentVariantInfo();
-          const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
-          iframe.src = newSrc;
-        }
-      });
-
-      // Listen for URL changes (some themes update URL when variant changes)
-      let currentUrl = window.location.href;
-      setInterval(() => {
-        if (window.location.href !== currentUrl) {
-          currentUrl = window.location.href;
-          console.log('URL changed, updating modal');
-          const iframe = document.getElementById('bidit-modal-iframe');
-          if (iframe) {
-            const { currentVariantId, currentPrice } = getCurrentVariantInfo();
-            const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
-            iframe.src = newSrc;
-          }
-        }
-      }, 500); // Check more frequently for URL changes
     }
 
-    // Setup variant change listeners
     setupVariantChangeListeners();
   }
 
-  // Wait for DOM to be ready
+  // Initialize when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
 
-  // Expose global functions
+  // Expose functions globally for debugging
   window.BidIt = {
-    open: openModal,
-    close: closeModal,
-    init: init
+    openModal,
+    init,
+    settings
   };
 
 })(); 
