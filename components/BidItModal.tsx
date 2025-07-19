@@ -22,6 +22,7 @@ interface BidQuality {
   message: string
   color: string
   icon: React.ReactNode
+  position: number // 0-100 for position on the bar
 }
 
 const BidItModal: React.FC<BidItModalProps> = ({
@@ -44,6 +45,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [stepStartTime, setStepStartTime] = useState<number>(Date.now())
   const [stepTimings, setStepTimings] = useState<Record<string, number>>({})
+  const [realtimeEvents, setRealtimeEvents] = useState<any[]>([])
 
   // Generate bid session ID on component mount
   useEffect(() => {
@@ -53,6 +55,53 @@ const BidItModal: React.FC<BidItModalProps> = ({
       logEvent('modal_opened', { shopifyProductId })
     }
   }, [isOpen, bidSessionId, shopifyProductId])
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!bidSessionId) return
+
+    // Subscribe to bid_logs for this session
+    const bidLogsSubscription = supabase
+      .channel(`bid_logs_${bidSessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'bid_logs',
+          filter: `bid_session_id=eq.${bidSessionId}`
+        },
+        (payload) => {
+          console.log('Real-time bid log:', payload.new)
+          setRealtimeEvents(prev => [...prev, { type: 'log', data: payload.new, timestamp: Date.now() }])
+        }
+      )
+      .subscribe()
+
+    // Subscribe to bids for this session
+    const bidsSubscription = supabase
+      .channel(`bids_${bidSessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'bids',
+          filter: `bid_session_id=eq.${bidSessionId}`
+        },
+        (payload) => {
+          console.log('Real-time bid update:', payload)
+          setRealtimeEvents(prev => [...prev, { type: 'bid', data: payload.new, event: payload.eventType, timestamp: Date.now() }])
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscriptions when component unmounts or session changes
+    return () => {
+      bidLogsSubscription.unsubscribe()
+      bidsSubscription.unsubscribe()
+    }
+  }, [bidSessionId])
 
   // Fetch product data when modal opens
   useEffect(() => {
@@ -115,37 +164,41 @@ const BidItModal: React.FC<BidItModalProps> = ({
   }
 
   const getBidQuality = (amount: number): BidQuality => {
-    if (!product) return { message: 'Enter a bid', color: 'text-gray-500', icon: <Info className="w-4 h-4" /> }
+    if (!product) return { message: 'Enter a bid', color: 'text-gray-500', icon: <Info className="w-4 h-4" />, position: 50 }
     
     const discountPercent = ((product.price - amount) / product.price) * 100
     
-    // If bid is above full price (negative discount), it's too high
+    // Calculate position on the bar (0 = red/bad, 100 = green/good)
+    let position = 50 // default middle
+    
     if (amount > product.price) {
-      return { message: 'Above retail price!', color: 'text-red-500', icon: <TrendingDown className="w-4 h-4" /> }
+      // Above retail price - position 0-10 (red)
+      position = Math.min(10, Math.max(0, (amount - product.price) / product.price * 50))
+      return { message: 'Above retail price!', color: 'text-red-500', icon: <TrendingDown className="w-4 h-4" />, position }
     }
     
-    // If discount is too high (asking for too much off)
     if (discountPercent > product.max_discount_percent) {
-      return { message: 'Too much discount!', color: 'text-red-500', icon: <TrendingDown className="w-4 h-4" /> }
+      // Too much discount - position 10-25 (red-orange)
+      position = 10 + (discountPercent - product.max_discount_percent) / (product.max_discount_percent * 2) * 15
+      return { message: 'Too much discount!', color: 'text-orange-500', icon: <TrendingDown className="w-4 h-4" />, position }
     }
     
-    // If discount is in the sweet spot (will be accepted)
     if (discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent) {
-      return { message: 'Hot! Likely accepted', color: 'text-green-500', icon: <TrendingUp className="w-4 h-4" /> }
+      // Sweet spot - position 60-80 (green)
+      const range = product.max_discount_percent - product.min_discount_percent
+      const withinRange = discountPercent - product.min_discount_percent
+      position = 60 + (withinRange / range) * 20
+      return { message: 'Looking good!', color: 'text-green-500', icon: <TrendingUp className="w-4 h-4" />, position }
     }
     
-    // If discount is too low (not enough off)
     if (discountPercent < product.min_discount_percent) {
-      if (discountPercent >= product.min_discount_percent * 0.7) {
-        return { message: 'Getting warmer - try more discount', color: 'text-yellow-500', icon: <TrendingUp className="w-4 h-4" /> }
-      } else if (discountPercent >= product.min_discount_percent * 0.4) {
-        return { message: 'Too little discount', color: 'text-blue-500', icon: <TrendingDown className="w-4 h-4" /> }
-      } else {
-        return { message: 'Way too little discount', color: 'text-gray-500', icon: <TrendingDown className="w-4 h-4" /> }
-      }
+      // Too little discount - position 25-60 (orange-yellow)
+      const maxDiscount = product.min_discount_percent
+      position = 25 + (discountPercent / maxDiscount) * 35
+      return { message: 'Try more discount', color: 'text-yellow-500', icon: <TrendingUp className="w-4 h-4" />, position }
     }
     
-    return { message: 'Enter a bid', color: 'text-gray-500', icon: <Info className="w-4 h-4" /> }
+    return { message: 'Enter a bid', color: 'text-gray-500', icon: <Info className="w-4 h-4" />, position: 50 }
   }
 
   const submitBid = async () => {
@@ -253,6 +306,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     setCurrentBidId(null)
     setStepStartTime(Date.now())
     setStepTimings({})
+    setRealtimeEvents([])
   }
 
   const handleClose = () => {
@@ -391,9 +445,20 @@ const BidItModal: React.FC<BidItModalProps> = ({
               </div>
 
               {bidQuality && (
-                <div className={`flex items-center gap-3 p-4 rounded-xl bg-gray-50 ${bidQuality.color}`}>
-                  {bidQuality.icon}
-                  <span className="font-medium">{bidQuality.message}</span>
+                <div className="space-y-3">
+                  {/* Color Bar */}
+                  <div className="relative h-3 bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 to-green-500 rounded-full overflow-hidden">
+                    {/* Position indicator */}
+                    <div 
+                      className="absolute top-0 w-1 h-full bg-white shadow-lg transform -translate-x-1/2"
+                      style={{ left: `${bidQuality.position}%` }}
+                    />
+                  </div>
+                  
+                  {/* Optional: Show position percentage for debugging */}
+                  <div className="text-center text-xs text-gray-500">
+                    Position: {Math.round(bidQuality.position)}%
+                  </div>
                 </div>
               )}
               
