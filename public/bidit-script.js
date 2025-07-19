@@ -177,7 +177,7 @@
       <img 
         src="https://res.cloudinary.com/stitchify/image/upload/v1752902760/b5ltsnlhwpan9rhknbir.png" 
         alt="BidIt" 
-        style="height: 20px; width: auto;"
+        style="height: 17px; width: auto;"
       />
       <span style="font-weight: 500; font-size: 14px;">Make an offer</span>
     `;
@@ -185,7 +185,7 @@
     // Apply comprehensive styling that overrides merchant CSS
     button.style.cssText = `
       background: #FFF!important;
-      color: white !important;
+      color: #000 !important;
       border: #99999960 1px solid !important;
       padding: 12px 24px !important;
       border-radius: 0px !important;
@@ -236,17 +236,16 @@
       // Apply consistent styling to existing buttons
       button.innerHTML = `
       <img 
-        src="https://res.cloudinary.com/stitchify/image/upload/v1752902760/b5ltsnlhwpan9rhknbir.png" 
+        src="https://res.cloudinary.com/stitchify/image/upload/v1752903381/qxofvucv6vaumewupadp.png" 
         alt="BidIt" 
-        style="height: 20px; width: auto;"
+        style="height: 17px; width: auto;"
       />
-      <span style="font-weight: 500; font-size: 14px;">Make an offer</span>
     `;
     
     // Apply comprehensive styling that overrides merchant CSS
     button.style.cssText = `
-      background: #FFF!important;
-      color: white !important;
+      background: #F85711!important;
+      color: #000 !important;
       border: #99999960 1px solid !important;
       padding: 12px 24px !important;
       border-radius: 0px !important;
