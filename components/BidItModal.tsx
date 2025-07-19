@@ -42,6 +42,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [bidQuality, setBidQuality] = useState<BidQuality | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [stepStartTime, setStepStartTime] = useState<number>(Date.now())
+  const [stepTimings, setStepTimings] = useState<Record<string, number>>({})
 
   // Generate bid session ID on component mount
   useEffect(() => {
@@ -87,6 +89,29 @@ const BidItModal: React.FC<BidItModalProps> = ({
     } catch (err) {
       console.error('Error logging event:', err)
     }
+  }
+
+  const trackStepTiming = (step: BidStep) => {
+    const currentTime = Date.now()
+    const timeSpent = currentTime - stepStartTime
+    
+    // Log the time spent on the previous step
+    if (stepStartTime > 0) {
+      logEvent('step_timing', {
+        step: currentStep,
+        timeSpentMs: timeSpent,
+        timeSpentSeconds: Math.round(timeSpent / 1000)
+      })
+    }
+    
+    // Update step timings state
+    setStepTimings(prev => ({
+      ...prev,
+      [currentStep]: timeSpent
+    }))
+    
+    // Reset start time for the new step
+    setStepStartTime(currentTime)
   }
 
   const getBidQuality = (amount: number): BidQuality => {
@@ -171,12 +196,15 @@ const BidItModal: React.FC<BidItModalProps> = ({
       logEvent('bid_evaluated', { bidId: bidData.id, accepted: isAccepted })
 
       if (isAccepted) {
+        trackStepTiming('success')
         setCurrentStep('success')
       } else {
         setBidsRemaining(prev => prev - 1)
         if (bidsRemaining <= 1) {
+          trackStepTiming('failure')
           setCurrentStep('failure')
         } else {
+          trackStepTiming('second-bid')
           setCurrentStep('second-bid')
         }
       }
@@ -223,11 +251,40 @@ const BidItModal: React.FC<BidItModalProps> = ({
     setBidQuality(null)
     setError(null)
     setCurrentBidId(null)
+    setStepStartTime(Date.now())
+    setStepTimings({})
   }
 
   const handleClose = () => {
+    // Track timing for the current step before closing
+    const currentTime = Date.now()
+    const timeSpent = currentTime - stepStartTime
+    
+    logEvent('modal_closed', { 
+      step: currentStep,
+      timeSpentMs: timeSpent,
+      timeSpentSeconds: Math.round(timeSpent / 1000),
+      totalSessionTimeMs: Object.values(stepTimings).reduce((sum, time) => sum + time, 0) + timeSpent
+    })
+    
     resetModal()
     onClose()
+  }
+
+  const handleAddToCart = () => {
+    logEvent('add_to_cart_clicked', { bidAmount, productTitle, productPrice })
+    handleClose()
+  }
+
+  const handleContinueShopping = () => {
+    logEvent('continue_shopping_clicked', { step: currentStep })
+    handleClose()
+  }
+
+  const handleStartBidding = () => {
+    logEvent('start_bidding_clicked', { productTitle, productPrice })
+    trackStepTiming('first-bid')
+    setCurrentStep('first-bid')
   }
 
   const renderStep = () => {
@@ -244,17 +301,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
               />
             </div>
 
-            {/* Product details */}
-            <div className="text-center space-y-3">
-              <h3 className="text-lg font-medium text-gray-900">{productTitle}</h3>
-              <div className="text-4xl font-bold text-orange-500">
-                ${productPrice.toFixed(2)}
-              </div>
-              <p className="text-sm text-gray-500">Full price</p>
-            </div>
-            
-            {/* How BidIt works info box */}
-            <div className="bg-gray-100 p-4 rounded-xl">
+             {/* How BidIt works info box */}
+             <div className="bg-gray-100 p-4 rounded-xl">
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-3">
                   <Info className="w-5 h-5 text-gray-600" />
@@ -266,13 +314,24 @@ const BidItModal: React.FC<BidItModalProps> = ({
               </div>
             </div>
 
+            {/* Product details */}
+            <div className="text-center space-y-3">
+              <h3 className="text-lg font-medium text-gray-900">{productTitle}</h3>
+              <div className="text-4xl font-bold text-orange-500">
+                ${productPrice.toFixed(2)}
+              </div>
+              <p className="text-sm text-gray-500">Full price</p>
+            </div>
+            
+           
+
             {/* Bids remaining and CTA */}
             <div className="text-center space-y-4">
               <p className="text-sm text-gray-900">
                 You have {bidsRemaining} bids remaining
               </p>
               <Button 
-                onClick={() => setCurrentStep('first-bid')} 
+                onClick={handleStartBidding} 
                 className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base flex items-center justify-center gap-2"
               >
                 Start Bidding
@@ -307,14 +366,9 @@ const BidItModal: React.FC<BidItModalProps> = ({
                         {/* Bid input section */}
             <div className="space-y-6">
               {currentStep === 'second-bid' && (
-                <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
-                  <div className="flex items-center gap-2 text-orange-800">
-                    <XCircle className="w-5 h-5" />
-                    <span className="font-medium">Bid Declined</span>
-                  </div>
-                  <p className="text-sm text-orange-700 mt-2">
-                    You still have one bid left. Try a different amount and let's see if this one works better.
-                  </p>
+                <div className="flex items-center justify-center gap-2 text-red-600 font-medium">
+                  <XCircle className="w-5 h-5" />
+                  <span>Bid Declined</span>
                 </div>
               )}
               
@@ -392,15 +446,15 @@ const BidItModal: React.FC<BidItModalProps> = ({
               </p>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-3"> 
               <Button 
-                onClick={handleClose} 
+                onClick={handleAddToCart} 
                 className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base"
               >
                 Add to Cart
               </Button>
               <Button 
-                onClick={handleClose} 
+                onClick={handleContinueShopping} 
                 className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-4 rounded-[10px] text-base"
               >
                 Continue Shopping
@@ -437,7 +491,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
             </div>
             
             <Button 
-              onClick={handleClose} 
+              onClick={handleContinueShopping} 
               className="w-full bg-black hover:bg-gray-800 text-white font-bold py-4 rounded-[10px] text-base"
             >
               Continue Shopping
