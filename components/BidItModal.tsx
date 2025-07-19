@@ -377,11 +377,12 @@ const BidItModal: React.FC<BidItModalProps> = ({
               />
             </div>
 
+           
+            
+            <div className="space-y-4">
             <div className="flex justify-center">
               <CheckCircle className="w-16 h-16 text-green-500" />
             </div>
-            
-            <div className="space-y-4">
               <h3 className="text-2xl font-bold text-green-600">Your Bid was Successful!</h3>
               <p className="text-gray-700">
                 Congratulations! Your bid of <span className="font-bold text-orange-500">${bidAmount}</span> was accepted.
