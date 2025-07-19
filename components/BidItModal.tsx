@@ -78,13 +78,14 @@ const BidItModal: React.FC<BidItModalProps> = ({
     }
   }
 
-  const logEvent = async (eventType: string, eventData?: any) => {
+  const logEvent = async (eventType: string, eventData?: any, timeSpentMs?: number) => {
     try {
       await supabase.from('bid_logs').insert({
         bid_id: currentBidId,
-        bid_session_id: bidSessionId, // Add session ID for pre-bid events
+        bid_session_id: bidSessionId,
         event_type: eventType,
-        event_data: eventData
+        event_data: eventData,
+        time_spent_ms: timeSpentMs
       })
     } catch (err) {
       console.error('Error logging event:', err)
@@ -99,9 +100,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
     if (stepStartTime > 0) {
       logEvent('step_timing', {
         step: currentStep,
-        timeSpentMs: timeSpent,
         timeSpentSeconds: Math.round(timeSpent / 1000)
-      })
+      }, timeSpent) // Pass timeSpent to the dedicated column
     }
     
     // Update step timings state
@@ -262,10 +262,9 @@ const BidItModal: React.FC<BidItModalProps> = ({
     
     logEvent('modal_closed', { 
       step: currentStep,
-      timeSpentMs: timeSpent,
       timeSpentSeconds: Math.round(timeSpent / 1000),
       totalSessionTimeMs: Object.values(stepTimings).reduce((sum, time) => sum + time, 0) + timeSpent
-    })
+    }, timeSpent) // Pass timeSpent to the dedicated column
     
     resetModal()
     onClose()
@@ -366,7 +365,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
                         {/* Bid input section */}
             <div className="space-y-6">
               {currentStep === 'second-bid' && (
-                <div className="flex items-center justify-center gap-2 text-red-600 font-medium">
+                <div className="flex items-center justify-center gap-2 text-red-600 font-large">
                   <XCircle className="w-5 h-5" />
                   <span>Bid Declined</span>
                 </div>
