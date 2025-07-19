@@ -12,26 +12,74 @@
     productPrice: 0,
     userId: '',
     buttonSelector: '[data-bidit-button]',
-    buttonText: 'Try BidIt - Make an Offer'
+    buttonText: 'Try BidIt - Make an Offer',
+    modalStyle: 'fullscreen', // 'fullscreen' or 'dropdown'
+    modalWidth: '400px',
+    modalHeight: '600px'
   };
 
   // Merge config with defaults
   const settings = { ...defaults, ...config };
 
   // Create modal iframe
-  function createModal() {
+  function createModal(triggerButton = null) {
     const iframe = document.createElement('iframe');
     iframe.src = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&title=${encodeURIComponent(settings.productTitle)}&price=${settings.productPrice}&userId=${encodeURIComponent(settings.userId)}`;
-    iframe.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-      z-index: 999999;
-      background: rgba(0, 0, 0, 0.5);
-    `;
+    
+    // Determine modal positioning based on style
+    if (settings.modalStyle === 'dropdown' && triggerButton) {
+      // Dropdown style - position below the button
+      const buttonRect = triggerButton.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Calculate position
+      let left = buttonRect.left;
+      let top = buttonRect.bottom + 10; // 10px gap below button
+      
+      // Ensure modal doesn't go off-screen
+      const modalWidth = parseInt(settings.modalWidth);
+      const modalHeight = parseInt(settings.modalHeight);
+      
+      // Adjust horizontal position if needed
+      if (left + modalWidth > viewportWidth) {
+        left = viewportWidth - modalWidth - 20; // 20px margin from edge
+      }
+      if (left < 20) left = 20; // Minimum 20px from left edge
+      
+      // Adjust vertical position if needed
+      if (top + modalHeight > viewportHeight) {
+        // Show above button instead
+        top = buttonRect.top - modalHeight - 10;
+        if (top < 20) top = 20; // Minimum 20px from top edge
+      }
+      
+      iframe.style.cssText = `
+        position: fixed;
+        top: ${top}px;
+        left: ${left}px;
+        width: ${settings.modalWidth};
+        height: ${settings.modalHeight};
+        border: none;
+        border-radius: 12px;
+        z-index: 999999;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        background: white;
+      `;
+    } else {
+      // Fullscreen style (default)
+      iframe.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+        z-index: 999999;
+        background: rgba(0, 0, 0, 0.5);
+      `;
+    }
+    
     iframe.id = 'bidit-modal-iframe';
     
     // Handle modal close
@@ -47,10 +95,14 @@
   }
 
   // Open modal
-  function openModal() {
-    const iframe = createModal();
+  function openModal(triggerButton = null) {
+    const iframe = createModal(triggerButton);
     document.body.appendChild(iframe);
-    document.body.style.overflow = 'hidden';
+    
+    // Only hide body overflow for fullscreen mode
+    if (settings.modalStyle === 'fullscreen') {
+      document.body.style.overflow = 'hidden';
+    }
   }
 
   // Close modal
@@ -93,7 +145,7 @@
     button.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      openModal();
+      openModal(this);
     });
     
     return button;
@@ -109,7 +161,7 @@
       button.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        openModal();
+        openModal(this);
       });
     });
 
