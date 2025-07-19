@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { supabase, type Product, type Bid, type BidLog } from '@/lib/supabase'
-import { Info, DollarSign, CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-react'
+import { Info, DollarSign, CheckCircle, XCircle, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
 
 interface BidItModalProps {
   isOpen: boolean
@@ -243,6 +243,15 @@ const BidItModal: React.FC<BidItModalProps> = ({
                 className="h-8 mx-auto"
               />
             </div>
+
+            {/* Product details */}
+            <div className="text-center space-y-3">
+              <h3 className="text-lg font-medium text-gray-900">{productTitle}</h3>
+              <div className="text-4xl font-bold text-orange-500">
+                ${productPrice.toFixed(2)}
+              </div>
+              <p className="text-sm text-gray-500">Full price</p>
+            </div>
             
             {/* How BidIt works info box */}
             <div className="bg-gray-100 p-4 rounded-xl">
@@ -257,15 +266,6 @@ const BidItModal: React.FC<BidItModalProps> = ({
               </div>
             </div>
 
-            {/* Product details */}
-            <div className="text-center space-y-3">
-              <h3 className="text-lg font-medium text-gray-900">{productTitle}</h3>
-              <div className="text-4xl font-bold text-orange-500">
-                ${productPrice.toFixed(2)}
-              </div>
-              <p className="text-sm text-gray-500">Full price</p>
-            </div>
-
             {/* Bids remaining and CTA */}
             <div className="text-center space-y-4">
               <p className="text-sm text-gray-900">
@@ -273,9 +273,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
               </p>
               <Button 
                 onClick={() => setCurrentStep('first-bid')} 
-                className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base"
+                className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base flex items-center justify-center gap-2"
               >
                 Start Bidding
+                <ArrowRight className="w-5 h-5" />
               </Button>
             </div>
           </div>
