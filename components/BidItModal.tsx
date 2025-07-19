@@ -447,7 +447,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
                         {/* Bid input section */}
             <div className="space-y-6">
               {currentStep === 'second-bid' && (
-                <div className="flex items-center justify-center gap-2 text-red-600 font-large">
+                <div className="flex items-center justify-center gap-2 text-red-600 font-bold text-lg">
                   <XCircle className="w-5 h-5" />
                   <span>Bid Declined</span>
                 </div>
