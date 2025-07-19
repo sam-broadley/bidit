@@ -249,7 +249,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
           </div>
         )
 
-      case 'first-bid':
+      case 'first-bid': // test
       case 'second-bid':
         return (
           <div className="space-y-6">
