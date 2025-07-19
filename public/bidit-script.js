@@ -6,16 +6,16 @@
   
   // Default configuration
   const defaults = {
-    modalUrl: 'https://bidit-modal.vercel.app',
+    modalUrl: 'https://bidit-tau.vercel.app',
     productId: '',
     productTitle: '',
     productPrice: 0,
     userId: '',
     buttonSelector: '[data-bidit-button]',
     buttonText: 'Try BidIt - Make an Offer',
-    modalStyle: 'fullscreen', // 'fullscreen' or 'dropdown'
-    modalWidth: '400px',
-    modalHeight: '600px'
+    modalStyle: 'dropdown', // Default to dropdown for better UX
+    modalWidth: '450px',    // Slightly wider for better content display
+    modalHeight: '650px'    // Taller to accommodate full content
   };
 
   // Merge config with defaults
@@ -38,8 +38,14 @@
       let top = buttonRect.bottom + 10; // 10px gap below button
       
       // Ensure modal doesn't go off-screen
-      const modalWidth = parseInt(settings.modalWidth);
-      const modalHeight = parseInt(settings.modalHeight);
+      let modalWidth = parseInt(settings.modalWidth);
+      let modalHeight = parseInt(settings.modalHeight);
+      
+      // Responsive sizing for mobile devices
+      if (viewportWidth < 768) {
+        modalWidth = Math.min(modalWidth, viewportWidth - 40); // 20px margin on each side
+        modalHeight = Math.min(modalHeight, viewportHeight - 40); // 20px margin on top/bottom
+      }
       
       // Adjust horizontal position if needed
       if (left + modalWidth > viewportWidth) {
