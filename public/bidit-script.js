@@ -24,17 +24,30 @@
 
   // Get current variant information
   function getCurrentVariantInfo() {
-    // Try to get variant from common Shopify selectors
-    const variantSelect = document.querySelector('select[name="id"], select[data-variant-select], .single-option-selector');
-    const variantInput = document.querySelector('input[name="id"]:checked, input[data-variant-id]');
-    
     let currentVariantId = settings.variantId;
     let currentPrice = settings.productPrice;
     
-    if (variantSelect && variantSelect.value) {
-      currentVariantId = variantSelect.value;
-    } else if (variantInput && variantInput.value) {
-      currentVariantId = variantInput.value;
+    // First, try to get variant from URL (most reliable)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlVariant = urlParams.get('variant');
+    if (urlVariant) {
+      currentVariantId = urlVariant;
+      console.log('Variant from URL:', urlVariant);
+    }
+    
+    // Fallback to form elements if URL doesn't have variant
+    if (!urlVariant) {
+      // Try to get variant from common Shopify selectors
+      const variantSelect = document.querySelector('select[name="id"], select[data-variant-select], .single-option-selector');
+      const variantInput = document.querySelector('input[name="id"]:checked, input[data-variant-id]');
+      
+      if (variantSelect && variantSelect.value) {
+        currentVariantId = variantSelect.value;
+        console.log('Variant from select:', variantSelect.value);
+      } else if (variantInput && variantInput.value) {
+        currentVariantId = variantInput.value;
+        console.log('Variant from input:', variantInput.value);
+      }
     }
     
     // Try to get current price from the page
@@ -49,6 +62,7 @@
       }
     }
     
+    console.log('Final variant ID:', currentVariantId);
     return { currentVariantId, currentPrice };
   }
 
@@ -342,7 +356,7 @@
             iframe.src = newSrc;
           }
         }
-      }, 1000);
+      }, 500); // Check more frequently for URL changes
     }
 
     // Setup variant change listeners
