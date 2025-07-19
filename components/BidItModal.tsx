@@ -234,7 +234,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     switch (currentStep) {
       case 'product-info':
         return (
-          <div className="flex flex-col justify-between h-full">
+          <div className="flex flex-col justify-between max-h-full">
             {/* BidIt Logo */}
             <div className="text-center">
               <img 
@@ -285,7 +285,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
       case 'first-bid':
       case 'second-bid':
         return (
-          <div className="flex flex-col justify-between h-full">
+          <div className="flex flex-col justify-between max-h-full">
             {/* BidIt Logo */}
             <div className="text-center">
               <img 
@@ -367,7 +367,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       case 'success':
         return (
-          <div className="flex flex-col justify-between h-full text-center">
+          <div className="flex flex-col justify-between max-h-full text-center">
             {/* BidIt Logo */}
             <div className="text-center">
               <img 
@@ -410,7 +410,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       case 'failure':
         return (
-          <div className="flex flex-col justify-between h-full text-center">
+          <div className="flex flex-col justify-between max-h-full text-center">
             {/* BidIt Logo */}
             <div className="text-center">
               <img 
@@ -453,7 +453,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogPortal>
         <DialogOverlay className="bg-gray-200/80 backdrop-blur-sm" />
-        <DialogContent className="sm:max-w-sm !max-h-[95vh] !h-[95vh] overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-6">
+        <DialogContent className="sm:max-w-sm h-[600px] overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-6">
           <DialogHeader className="sr-only">
             <DialogTitle>
               {currentStep === 'success' ? 'Bid Successful!' : 
