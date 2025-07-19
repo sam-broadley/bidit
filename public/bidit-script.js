@@ -235,10 +235,11 @@
     existingButtons.forEach(button => {
       // Apply consistent styling to existing buttons
       button.innerHTML = `
+      <span style="font-weight: 500; font-size: 15px;">Make an offer with</span>
       <img 
         src="https://res.cloudinary.com/stitchify/image/upload/v1752903381/qxofvucv6vaumewupadp.png" 
         alt="BidIt" 
-        style="height: 17px; width: auto;"
+        style="height: 15px; width: auto;"
       />
     `;
     
@@ -249,6 +250,7 @@
       border: #99999960 1px solid !important;
       padding: 12px 24px !important;
       border-radius: 0px !important;
+      gap: 5px !important;
       font-weight: 600 !important;
       margin-top: 10px !important;
       width: 100% !important;
