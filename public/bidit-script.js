@@ -16,7 +16,7 @@
     buttonText: 'Try BidIt - Make an Offer',
     modalStyle: 'dropdown', // Default to dropdown for better UX
     modalWidth: '450px',    // Slightly wider for better content display
-    modalHeight: '600px',   // Taller to accommodate full content
+    modalHeight: '680px',   // Taller to accommodate full content
     borderRadius: '20px'    // Match the modal's rounded corners
   };
 
