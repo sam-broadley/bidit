@@ -62,22 +62,115 @@
     return { currentVariantId, currentPrice };
   }
 
-  // Open modal by dispatching a custom event
+  // Create and open modal
   function openModal(triggerButton = null) {
     const { currentVariantId, currentPrice } = getCurrentVariantInfo();
     
-    // Create and dispatch a custom event to open the React modal
-    const modalEvent = new CustomEvent('openBidItModal', {
-      detail: {
-        shopifyProductId: settings.productId,
-        shopifyVariantId: currentVariantId || '',
-        productTitle: settings.productTitle,
-        productPrice: currentPrice,
-        userId: settings.userId
+    console.log('BidIt: Opening modal with data:', {
+      shopifyProductId: settings.productId,
+      shopifyVariantId: currentVariantId || '',
+      productTitle: settings.productTitle,
+      productPrice: currentPrice,
+      userId: settings.userId
+    });
+    
+    // Remove existing modal if present
+    const existingModal = document.getElementById('bidit-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+    
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.id = 'bidit-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999999;
+      backdrop-filter: blur(4px);
+    `;
+    
+    // Create modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      border-radius: 20px;
+      width: 90vw;
+      max-width: 400px;
+      height: 500px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      position: relative;
+    `;
+    
+    // Create iframe for the modal content
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = `
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 20px;
+    `;
+    
+    // Build the URL with parameters
+    const params = new URLSearchParams({
+      productId: settings.productId,
+      variantId: currentVariantId || '',
+      title: settings.productTitle,
+      price: currentPrice.toString(),
+      userId: settings.userId
+    });
+    
+    iframe.src = `https://bidit-tau.vercel.app/modal?${params.toString()}`;
+    
+    // Add close functionality
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closeModal();
       }
     });
     
-    window.dispatchEvent(modalEvent);
+    // Add escape key listener
+    const handleEscape = function(e) {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    
+    // Store the escape handler for cleanup
+    modal._escapeHandler = handleEscape;
+    
+    modalContent.appendChild(iframe);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Hide body overflow
+    document.body.style.overflow = 'hidden';
+    
+    console.log('BidIt: Modal opened');
+  }
+  
+  // Close modal
+  function closeModal() {
+    const modal = document.getElementById('bidit-modal');
+    if (modal) {
+      // Remove escape key listener
+      if (modal._escapeHandler) {
+        document.removeEventListener('keydown', modal._escapeHandler);
+      }
+      modal.remove();
+      document.body.style.overflow = '';
+      console.log('BidIt: Modal closed');
+    }
   }
 
   // Create BidIt button
@@ -142,6 +235,13 @@
 
   // Initialize BidIt
   function init() {
+    // Listen for close messages from iframe
+    window.addEventListener('message', function(event) {
+      if (event.data.type === 'BIDIT_CLOSE') {
+        closeModal();
+      }
+    });
+    
     // Find existing BidIt buttons
     const existingButtons = document.querySelectorAll(settings.buttonSelector);
     
@@ -244,6 +344,7 @@
   // Expose functions globally for debugging
   window.BidIt = {
     openModal,
+    closeModal,
     init,
     settings
   };
