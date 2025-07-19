@@ -246,7 +246,7 @@
     // Apply comprehensive styling that overrides merchant CSS
     button.style.cssText = `
       background: #F85711!important;
-      color: #000 !important;
+      color: #FFF !important;
       border: #99999960 1px solid !important;
       padding: 12px 24px !important;
       border-radius: 0px !important;
