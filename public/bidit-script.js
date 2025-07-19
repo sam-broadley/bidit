@@ -15,8 +15,8 @@
     buttonSelector: '[data-bidit-button]',
     buttonText: 'Try BidIt - Make an Offer',
     modalStyle: 'dropdown', // Default to dropdown for better UX
-    modalWidth: '450px',    // Slightly wider for better content display
-    modalHeight: '680px',   // Taller to accommodate full content
+    modalWidth: '90vw',     // Responsive width for mobile
+    modalHeight: '500px',   // Shorter height for mobile
     borderRadius: '20px'    // Match the modal's rounded corners
   };
 
@@ -86,7 +86,9 @@
       let top = buttonRect.bottom + 10; // 10px gap below button
       
       // Ensure modal doesn't go off-screen
-      let modalWidth = parseInt(settings.modalWidth);
+      let modalWidth = settings.modalWidth.includes('vw') 
+        ? (parseInt(settings.modalWidth) / 100) * viewportWidth 
+        : parseInt(settings.modalWidth);
       let modalHeight = parseInt(settings.modalHeight);
       
       // Responsive sizing for mobile devices
@@ -112,8 +114,8 @@
         position: fixed;
         top: ${top}px;
         left: ${left}px;
-        width: ${settings.modalWidth};
-        height: ${settings.modalHeight};
+        width: ${modalWidth}px;
+        height: ${modalHeight}px;
         border: none;
         border-radius: ${settings.borderRadius};
         z-index: 999999;

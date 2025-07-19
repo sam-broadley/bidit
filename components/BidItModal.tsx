@@ -168,6 +168,18 @@ const BidItModal: React.FC<BidItModalProps> = ({
     
     const discountPercent = ((product.price - amount) / product.price) * 100
     
+    // Debug logging
+    console.log('Bid Quality Calculation:', {
+      amount,
+      productPrice: product.price,
+      discountPercent: discountPercent.toFixed(2),
+      minDiscount: product.min_discount_percent,
+      maxDiscount: product.max_discount_percent,
+      isAboveMax: discountPercent > product.max_discount_percent,
+      isInSweetSpot: discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent,
+      isBelowMin: discountPercent < product.min_discount_percent
+    })
+    
     // Calculate position on the bar (0 = red/bad, 100 = green/good)
     let position = 50 // default middle
     
@@ -185,16 +197,21 @@ const BidItModal: React.FC<BidItModalProps> = ({
     
     if (discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent) {
       // Sweet spot - position 60-80 (green)
+      // Closer to full price (lower discount) = better position (closer to 80)
       const range = product.max_discount_percent - product.min_discount_percent
       const withinRange = discountPercent - product.min_discount_percent
-      position = 60 + (withinRange / range) * 20
+      position = 80 - (withinRange / range) * 20 // Inverted: lower discount = higher position
       return { message: 'Looking good!', color: 'text-green-500', icon: <TrendingUp className="w-4 h-4" />, position }
     }
     
     if (discountPercent < product.min_discount_percent) {
       // Too little discount - position 25-60 (orange-yellow)
-      const maxDiscount = product.min_discount_percent
-      position = 25 + (discountPercent / maxDiscount) * 35
+      if (product.min_discount_percent === 0) {
+        // If no minimum discount required, position based on how close to full price
+        position = 25 + (discountPercent / 10) * 35 // Use 10% as reference point
+      } else {
+        position = 25 + (discountPercent / product.min_discount_percent) * 35
+      }
       return { message: 'Try more discount', color: 'text-yellow-500', icon: <TrendingUp className="w-4 h-4" />, position }
     }
     
