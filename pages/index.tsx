@@ -1,17 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import BidItModal from '@/components/BidItModal'
 import { Button } from '@/components/ui/button'
 import { ShoppingBag, DollarSign } from 'lucide-react'
 
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalData, setModalData] = useState({
-    shopifyProductId: '',
-    shopifyVariantId: '',
-    productTitle: '',
-    productPrice: 0,
-    userId: ''
-  })
 
   // Sample product data (in real app, this would come from Shopify)
   const sampleProduct = {
@@ -19,20 +12,6 @@ export default function HomePage() {
     title: 'Nike Air Max',
     price: 180
   }
-
-  // Listen for custom event from the script
-  useEffect(() => {
-    const handleOpenModal = (event: CustomEvent) => {
-      setModalData(event.detail)
-      setIsModalOpen(true)
-    }
-
-    window.addEventListener('openBidItModal', handleOpenModal as EventListener)
-    
-    return () => {
-      window.removeEventListener('openBidItModal', handleOpenModal as EventListener)
-    }
-  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -144,11 +123,10 @@ export default function HomePage() {
       <BidItModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        shopifyProductId={modalData.shopifyProductId || sampleProduct.id}
-        shopifyVariantId={modalData.shopifyVariantId}
-        productTitle={modalData.productTitle || sampleProduct.title}
-        productPrice={modalData.productPrice || sampleProduct.price}
-        userId={modalData.userId || "1"} // Demo user ID
+        shopifyProductId={sampleProduct.id}
+        productTitle={sampleProduct.title}
+        productPrice={sampleProduct.price}
+        userId="1" // Demo user ID
       />
     </div>
   )

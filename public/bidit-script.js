@@ -6,13 +6,18 @@
   
   // Default configuration
   const defaults = {
+    modalUrl: 'https://bidit-tau.vercel.app',
     productId: '',
     variantId: '',
     productTitle: '',
     productPrice: 0,
     userId: '',
     buttonSelector: '[data-bidit-button]',
-    buttonText: 'Try BidIt - Make an Offer'
+    buttonText: 'Try BidIt - Make an Offer',
+    modalStyle: 'dropdown', // Default to dropdown for better UX
+    modalWidth: '450px',    // Slightly wider for better content display
+    modalHeight: '600px',   // Taller to accommodate full content
+    borderRadius: '20px'    // Match the modal's rounded corners
   };
 
   // Merge config with defaults
@@ -62,114 +67,104 @@
     return { currentVariantId, currentPrice };
   }
 
-  // Create and open modal
-  function openModal(triggerButton = null) {
+  // Create modal iframe
+  function createModal(triggerButton = null) {
+    const iframe = document.createElement('iframe');
     const { currentVariantId, currentPrice } = getCurrentVariantInfo();
     
-    console.log('BidIt: Opening modal with data:', {
-      shopifyProductId: settings.productId,
-      shopifyVariantId: currentVariantId || '',
-      productTitle: settings.productTitle,
-      productPrice: currentPrice,
-      userId: settings.userId
-    });
+    iframe.src = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
     
-    // Remove existing modal if present
-    const existingModal = document.getElementById('bidit-modal');
-    if (existingModal) {
-      existingModal.remove();
+    // Determine modal positioning based on style
+    if (settings.modalStyle === 'dropdown' && triggerButton) {
+      // Dropdown style - position below the button
+      const buttonRect = triggerButton.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Calculate position
+      let left = buttonRect.left;
+      let top = buttonRect.bottom + 10; // 10px gap below button
+      
+      // Ensure modal doesn't go off-screen
+      let modalWidth = parseInt(settings.modalWidth);
+      let modalHeight = parseInt(settings.modalHeight);
+      
+      // Responsive sizing for mobile devices
+      if (viewportWidth < 768) {
+        modalWidth = Math.min(modalWidth, viewportWidth - 40); // 20px margin on each side
+        modalHeight = Math.min(modalHeight, viewportHeight - 40); // 20px margin on top/bottom
+      }
+      
+      // Adjust horizontal position if needed
+      if (left + modalWidth > viewportWidth) {
+        left = viewportWidth - modalWidth - 20; // 20px margin from edge
+      }
+      if (left < 20) left = 20; // Minimum 20px from left edge
+      
+      // Adjust vertical position if needed
+      if (top + modalHeight > viewportHeight) {
+        // Show above button instead
+        top = buttonRect.top - modalHeight - 10;
+        if (top < 20) top = 20; // Minimum 20px from top edge
+      }
+      
+      iframe.style.cssText = `
+        position: fixed;
+        top: ${top}px;
+        left: ${left}px;
+        width: ${settings.modalWidth};
+        height: ${settings.modalHeight};
+        border: none;
+        border-radius: ${settings.borderRadius};
+        z-index: 999999;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        background: white;
+      `;
+    } else {
+      // Fullscreen style (default)
+      iframe.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+        z-index: 999999;
+        background: rgba(0, 0, 0, 0.5);
+      `;
     }
     
-    // Create modal container
-    const modal = document.createElement('div');
-    modal.id = 'bidit-modal';
-    modal.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 999999;
-      backdrop-filter: blur(4px);
-    `;
+    iframe.id = 'bidit-modal-iframe';
     
-    // Create modal content
-    const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
-      background: white;
-      border-radius: 20px;
-      width: 90vw;
-      max-width: 400px;
-      height: 500px;
-      max-height: 90vh;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      position: relative;
-    `;
-    
-    // Create iframe for the modal content
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = `
-      width: 100%;
-      height: 100%;
-      border: none;
-      border-radius: 20px;
-    `;
-    
-    // Build the URL with parameters
-    const params = new URLSearchParams({
-      productId: settings.productId,
-      variantId: currentVariantId || '',
-      title: settings.productTitle,
-      price: currentPrice.toString(),
-      userId: settings.userId
-    });
-    
-    iframe.src = `https://bidit-tau.vercel.app/modal?${params.toString()}`;
-    
-    // Add close functionality
-    modal.addEventListener('click', function(e) {
-      if (e.target === modal) {
+    // Handle modal close
+    window.addEventListener('message', function(event) {
+      if (event.origin !== settings.modalUrl) return;
+      
+      if (event.data.type === 'BIDIT_CLOSE') {
         closeModal();
       }
     });
-    
-    // Add escape key listener
-    const handleEscape = function(e) {
-      if (e.key === 'Escape') {
-        closeModal();
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    
-    // Store the escape handler for cleanup
-    modal._escapeHandler = handleEscape;
-    
-    modalContent.appendChild(iframe);
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
-    
-    // Hide body overflow
-    document.body.style.overflow = 'hidden';
-    
-    console.log('BidIt: Modal opened');
+
+    return iframe;
   }
-  
+
+  // Open modal
+  function openModal(triggerButton = null) {
+    const iframe = createModal(triggerButton);
+    document.body.appendChild(iframe);
+    
+    // Only hide body overflow for fullscreen mode
+    if (settings.modalStyle === 'fullscreen') {
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
   // Close modal
   function closeModal() {
-    const modal = document.getElementById('bidit-modal');
-    if (modal) {
-      // Remove escape key listener
-      if (modal._escapeHandler) {
-        document.removeEventListener('keydown', modal._escapeHandler);
-      }
-      modal.remove();
+    const iframe = document.getElementById('bidit-modal-iframe');
+    if (iframe) {
+      iframe.remove();
       document.body.style.overflow = '';
-      console.log('BidIt: Modal closed');
     }
   }
 
@@ -235,13 +230,6 @@
 
   // Initialize BidIt
   function init() {
-    // Listen for close messages from iframe
-    window.addEventListener('message', function(event) {
-      if (event.data.type === 'BIDIT_CLOSE') {
-        closeModal();
-      }
-    });
-    
     // Find existing BidIt buttons
     const existingButtons = document.querySelectorAll(settings.buttonSelector);
     
@@ -309,6 +297,13 @@
       }
     }
 
+    // Add global close handler
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        closeModal();
+      }
+    });
+
     // Listen for variant changes
     function setupVariantChangeListeners() {
       // Common Shopify variant selectors
@@ -317,36 +312,69 @@
         'select[data-variant-select]',
         '.single-option-selector',
         'input[name="id"]',
-        'input[data-variant-id]'
+        'input[data-variant-id]',
+        '[data-variant-selector]'
       ];
-      
+
       variantSelectors.forEach(selector => {
         const elements = document.querySelectorAll(selector);
         elements.forEach(element => {
           element.addEventListener('change', function() {
             console.log('Variant changed:', this.value);
-            // You could update button text or styling here if needed
+            // Update any existing modal with new variant info
+            const iframe = document.getElementById('bidit-modal-iframe');
+            if (iframe) {
+              const { currentVariantId, currentPrice } = getCurrentVariantInfo();
+              const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
+              iframe.src = newSrc;
+            }
           });
         });
       });
+
+      // Listen for Shopify's custom variant change events
+      document.addEventListener('variant:change', function(event) {
+        console.log('Shopify variant change event:', event);
+        const iframe = document.getElementById('bidit-modal-iframe');
+        if (iframe) {
+          const { currentVariantId, currentPrice } = getCurrentVariantInfo();
+          const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
+          iframe.src = newSrc;
+        }
+      });
+
+      // Listen for URL changes (some themes update URL when variant changes)
+      let currentUrl = window.location.href;
+      setInterval(() => {
+        if (window.location.href !== currentUrl) {
+          currentUrl = window.location.href;
+          console.log('URL changed, updating modal');
+          const iframe = document.getElementById('bidit-modal-iframe');
+          if (iframe) {
+            const { currentVariantId, currentPrice } = getCurrentVariantInfo();
+            const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
+            iframe.src = newSrc;
+          }
+        }
+      }, 500); // Check more frequently for URL changes
     }
 
+    // Setup variant change listeners
     setupVariantChangeListeners();
   }
 
-  // Initialize when DOM is ready
+  // Wait for DOM to be ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
 
-  // Expose functions globally for debugging
+  // Expose global functions
   window.BidIt = {
-    openModal,
-    closeModal,
-    init,
-    settings
+    open: openModal,
+    close: closeModal,
+    init: init
   };
 
 })(); 
