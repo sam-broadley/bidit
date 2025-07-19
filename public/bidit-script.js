@@ -256,7 +256,7 @@
       width: 100% !important;
       display: flex !important;
       align-items: center !important;
-      justify-content: space-between !important;
+      justify-content: center !important;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
       transition: all 0.3s ease !important;
       cursor: pointer !important;
