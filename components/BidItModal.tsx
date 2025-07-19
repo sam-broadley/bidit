@@ -142,7 +142,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
           bid_session_id: bidSessionId,
           user_id: userId && userId !== 'undefined' ? parseInt(userId) : null,
           product_id: product.id,
-          // shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null, // Temporarily commented out
+          shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null,
           amount: amount,
           status: 'pending'
         })
@@ -185,7 +185,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
         bid_session_id: bidSessionId,
         user_id: userId,
         product_id: product?.id,
-        // shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null, // Temporarily commented out
+        shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null,
         amount: amount
       })
       
