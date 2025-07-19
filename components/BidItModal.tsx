@@ -234,31 +234,47 @@ const BidItModal: React.FC<BidItModalProps> = ({
     switch (currentStep) {
       case 'product-info':
         return (
-          <div className="space-y-6">
+          <div className="flex flex-col justify-between h-full">
+            {/* BidIt Logo */}
             <div className="text-center">
-              <h3 className="text-lg font-semibold mb-2">{productTitle}</h3>
-              <div className="flex items-center justify-center gap-2 text-2xl font-bold text-green-600">
-                <DollarSign className="w-6 h-6" />
-                {productPrice.toFixed(2)}
-              </div>
-              <p className="text-sm text-gray-600 mt-2">Full price</p>
+              <img 
+                src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                alt="BidIt" 
+                className="h-8 mx-auto"
+              />
             </div>
             
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Info className="w-5 h-5 text-blue-600" />
-                <span className="font-medium text-blue-800">How BidIt works</span>
+            {/* How BidIt works info box */}
+            <div className="bg-gray-100 p-4 rounded-xl">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <Info className="w-5 h-5 text-gray-600" />
+                  <h3 className="font-bold text-gray-900">How Bidit works</h3>
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  You're bidding against the merchant, not other customers. Offer what you're willing to pay - if accepted, you can buy at that price!
+                </p>
               </div>
-              <p className="text-sm text-blue-700">
-                You're bidding against the merchant, not other customers. Offer what you're willing to pay - if accepted, you can buy at that price!
-              </p>
             </div>
 
-            <div className="text-center">
-              <div className="text-lg font-semibold text-blue-600 mb-2">
-                You have {bidsRemaining} bids remaining
+            {/* Product details */}
+            <div className="text-center space-y-3">
+              <h3 className="text-lg font-medium text-gray-900">{productTitle}</h3>
+              <div className="text-4xl font-bold text-orange-500">
+                ${productPrice.toFixed(2)}
               </div>
-              <Button onClick={() => setCurrentStep('first-bid')} className="w-full">
+              <p className="text-sm text-gray-500">Full price</p>
+            </div>
+
+            {/* Bids remaining and CTA */}
+            <div className="text-center space-y-4">
+              <p className="text-sm text-gray-900">
+                You have {bidsRemaining} bids remaining
+              </p>
+              <Button 
+                onClick={() => setCurrentStep('first-bid')} 
+                className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base"
+              >
                 Start Bidding
               </Button>
             </div>
@@ -268,28 +284,52 @@ const BidItModal: React.FC<BidItModalProps> = ({
       case 'first-bid':
       case 'second-bid':
         return (
-          <div className="space-y-6">
+          <div className="flex flex-col justify-between h-full">
+            {/* BidIt Logo */}
             <div className="text-center">
-              <h3 className="text-lg font-semibold mb-2">{productTitle}</h3>
-              <div className="flex items-center justify-center gap-2 text-xl font-bold text-green-600">
-                <DollarSign className="w-5 h-5" />
-                {productPrice.toFixed(2)}
-              </div>
-              <p className="text-sm text-gray-600">Full price</p>
+              <img 
+                src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                alt="BidIt" 
+                className="h-8 mx-auto"
+              />
             </div>
 
-            <div className="space-y-4">
+            {/* Product details */}
+            <div className="text-center space-y-3">
+              <h3 className="text-lg font-bold text-gray-900">{productTitle}</h3>
+              <div className="text-4xl font-bold text-orange-500">
+                ${productPrice.toFixed(2)}
+              </div>
+              <p className="text-sm text-gray-500">Full price</p>
+            </div>
+
+                        {/* Bid input section */}
+            <div className="space-y-6">
+              {currentStep === 'second-bid' && (
+                <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
+                  <div className="flex items-center gap-2 text-orange-800">
+                    <XCircle className="w-5 h-5" />
+                    <span className="font-medium">Bid Declined</span>
+                  </div>
+                  <p className="text-sm text-orange-700 mt-2">
+                    You still have one bid left. Try a different amount and let's see if this one works better.
+                  </p>
+                </div>
+              )}
+              
               <div>
-                <Label htmlFor="bid-amount">Your Bid Amount</Label>
+                <Label htmlFor="bid-amount" className="text-sm font-medium text-gray-900 mb-2 block">
+                  Your Bid Amount
+                </Label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <Input
                     id="bid-amount"
                     type="number"
                     placeholder="0.00"
                     value={bidAmount}
                     onChange={(e) => handleBidChange(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 py-3 text-lg border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     min="0"
                     step="0.01"
                   />
@@ -297,23 +337,18 @@ const BidItModal: React.FC<BidItModalProps> = ({
               </div>
 
               {bidQuality && (
-                <div className={`flex items-center gap-2 p-3 rounded-lg bg-gray-50 ${bidQuality.color}`}>
+                <div className={`flex items-center gap-3 p-4 rounded-xl bg-gray-50 ${bidQuality.color}`}>
                   {bidQuality.icon}
                   <span className="font-medium">{bidQuality.message}</span>
                 </div>
               )}
               
-              {product && (
-                <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
-                  💡 Acceptable range: ${(product.price * (1 - product.max_discount_percent / 100)).toFixed(2)} - ${(product.price * (1 - product.min_discount_percent / 100)).toFixed(2)} 
-                  (${product.min_discount_percent}% - ${product.max_discount_percent}% discount)
-                </div>
-              )}
-
+ 
+  
               {error && (
-                <div className="text-red-600 text-sm">{error}</div>
+                <div className="text-red-600 text-sm bg-red-50 p-3 rounded-xl">{error}</div>
               )}
-
+              
               <div className="text-center text-sm text-gray-600">
                 {bidsRemaining} bid{bidsRemaining !== 1 ? 's' : ''} remaining
               </div>
@@ -321,7 +356,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
               <Button 
                 onClick={submitBid} 
                 disabled={isLoading || !bidAmount}
-                className="w-full"
+                className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base"
               >
                 {isLoading ? 'Submitting...' : currentStep === 'second-bid' ? 'Submit Final Bid' : 'Submit Bid'}
               </Button>
@@ -331,43 +366,78 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       case 'success':
         return (
-          <div className="text-center space-y-6">
+          <div className="flex flex-col justify-between h-full text-center">
+            {/* BidIt Logo */}
+            <div className="text-center">
+              <img 
+                src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                alt="BidIt" 
+                className="h-8 mx-auto"
+              />
+            </div>
+
             <div className="flex justify-center">
               <CheckCircle className="w-16 h-16 text-green-500" />
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-green-600 mb-2">Your Bid was SUCCESSFUL!</h3>
-              <p className="text-gray-600 mb-4">
-                Congratulations! Your bid of <span className="font-semibold">${bidAmount}</span> was accepted.
+            
+            <div className="space-y-4">
+              <h3 className="text-2xl font-bold text-green-600">Your Bid was Successful!</h3>
+              <p className="text-gray-700">
+                Congratulations! Your bid of <span className="font-bold text-orange-500">${bidAmount}</span> was accepted.
               </p>
               <p className="text-sm text-gray-500">
                 You can now purchase this item at your bid price.
               </p>
             </div>
-            <Button onClick={handleClose} className="w-full">
-              Continue Shopping
-            </Button>
+            
+            <div className="space-y-3">
+              <Button 
+                onClick={handleClose} 
+                className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base"
+              >
+                Add to Cart
+              </Button>
+              <Button 
+                onClick={handleClose} 
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-4 rounded-[10px] text-base"
+              >
+                Continue Shopping
+              </Button>
+            </div>
           </div>
         )
 
       case 'failure':
         return (
-          <div className="text-center space-y-6">
+          <div className="flex flex-col justify-between h-full text-center">
+            {/* BidIt Logo */}
+            <div className="text-center">
+              <img 
+                src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                alt="BidIt" 
+                className="h-8 mx-auto"
+              />
+            </div>
+
             <div className="flex justify-center">
               <XCircle className="w-16 h-16 text-red-500" />
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-red-600 mb-2">Bid Not Successful</h3>
-              <p className="text-gray-600 mb-4">
-                Unfortunately, your bids were not accepted. But don't worry!
+            
+            <div className="space-y-4">
+              <h3 className="text-2xl font-bold text-red-600">Your Bid was Not Successful</h3>
+              <p className="text-gray-700">
               </p>
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  <strong>Special Offer:</strong> Get 10% off this item with code <span className="font-mono bg-yellow-200 px-2 py-1 rounded">BIDIT10</span>
+              <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+                <p className="text-medium text-yellow-800">
+                  <strong>For using Bidit:</strong> Get 10% off this item with code <span className="font-mono bg-yellow-200 px-2 py-1 rounded">BIDIT10</span>
                 </p>
               </div>
             </div>
-            <Button onClick={handleClose} className="w-full">
+            
+            <Button 
+              onClick={handleClose} 
+              className="w-full bg-black hover:bg-gray-800 text-white font-bold py-4 rounded-[10px] text-base"
+            >
               Continue Shopping
             </Button>
           </div>
@@ -381,10 +451,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogPortal>
-        <DialogOverlay className="bg-black/50" />
-        <DialogContent className="sm:max-w-md h-full">
-          <DialogHeader>
-            <DialogTitle className="text-center">
+        <DialogOverlay className="bg-gray-200/80 backdrop-blur-sm" />
+        <DialogContent className="sm:max-w-sm !max-h-[95vh] !h-[95vh] overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-6">
+          <DialogHeader className="sr-only">
+            <DialogTitle>
               {currentStep === 'success' ? 'Bid Successful!' : 
                currentStep === 'failure' ? 'Bid Results' : 
                'BidIt - Make an Offer'}
