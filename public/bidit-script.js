@@ -1,10 +1,11 @@
-(function() {
+<script>
+(function () {
   'use strict';
 
-  // Configuration from Shopify theme
-  const config = window.BidItConfig || {};
-  
-  // Default configuration
+  /* ------------------------------------------------------------------ *
+   * CONFIG
+   * ------------------------------------------------------------------ */
+  const themeCfg = window.BidItConfig || {};
   const defaults = {
     modalUrl: 'https://bidit-tau.vercel.app',
     productId: '',
@@ -13,370 +14,229 @@
     productPrice: 0,
     userId: '',
     buttonSelector: '[data-bidit-button]',
-    buttonText: 'Try BidIt - Make an Offer',
-    modalStyle: 'dropdown', // Default to dropdown for better UX
-    modalWidth: '90vw',     // Responsive width for mobile
-    modalHeight: '500px',   // Shorter height for mobile
-    borderRadius: '20px'    // Match the modal's rounded corners
+    modalStyle: 'dropdown',
+    borderRadius: '20px'
   };
+  const settings = { ...defaults, ...themeCfg };
 
-  // Merge config with defaults
-  const settings = { ...defaults, ...config };
+  /* ------------------------------------------------------------------ *
+   * UTIL – RESPONSIVE MODAL DIMS
+   * ------------------------------------------------------------------ */
+  function getModalDims() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
 
-  // Get current variant information
+    if (vw <= 767) {                 // phones
+      return {
+        w: Math.min(vw - 40, 420) + 'px',
+        h: Math.min(vh - 40, 520) + 'px'
+      };
+    }
+
+    if (vw <= 1199) {                // tablets / small desktop
+      return { w: '450px', h: '600px' };
+    }
+
+    return { w: '550px', h: '680px' }; // large desktop
+  }
+
+  /* ------------------------------------------------------------------ *
+   * GET VARIANT + PRICE
+   * ------------------------------------------------------------------ */
   function getCurrentVariantInfo() {
     let currentVariantId = settings.variantId;
     let currentPrice = settings.productPrice;
-    
-    // First, try to get variant from URL (most reliable)
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlVariant = urlParams.get('variant');
-    if (urlVariant) {
-      currentVariantId = urlVariant;
-      console.log('Variant from URL:', urlVariant);
-    }
-    
-    // Fallback to form elements if URL doesn't have variant
+
+    // 1. URL param
+    const urlVariant = new URLSearchParams(window.location.search).get('variant');
+    if (urlVariant) currentVariantId = urlVariant;
+
+    // 2. DOM selects/inputs
     if (!urlVariant) {
-      // Try to get variant from common Shopify selectors
-      const variantSelect = document.querySelector('select[name="id"], select[data-variant-select], .single-option-selector');
-      const variantInput = document.querySelector('input[name="id"]:checked, input[data-variant-id]');
-      
-      if (variantSelect && variantSelect.value) {
-        currentVariantId = variantSelect.value;
-        console.log('Variant from select:', variantSelect.value);
-      } else if (variantInput && variantInput.value) {
-        currentVariantId = variantInput.value;
-        console.log('Variant from input:', variantInput.value);
-      }
+      const sel = document.querySelector(
+        'select[name="id"], select[data-variant-select], .single-option-selector'
+      );
+      const inp = document.querySelector(
+        'input[name="id"]:checked, input[data-variant-id]'
+      );
+      if (sel?.value) currentVariantId = sel.value;
+      else if (inp?.value) currentVariantId = inp.value;
     }
-    
-    // Try to get current price from the page
-    const priceElement = document.querySelector('.price, .product-price, [data-price]');
-    if (priceElement) {
-      const priceText = priceElement.textContent || priceElement.getAttribute('data-price');
-      if (priceText) {
-        const priceMatch = priceText.match(/[\d,]+\.?\d*/);
-        if (priceMatch) {
-          currentPrice = parseFloat(priceMatch[0].replace(/,/g, ''));
-        }
-      }
+
+    // 3. Price element
+    const priceEl = document.querySelector('.price, .product-price, [data-price]');
+    if (priceEl) {
+      const raw = priceEl.textContent || priceEl.getAttribute('data-price') || '';
+      const match = raw.match(/[\d,]+\.?\d*/);
+      if (match) currentPrice = parseFloat(match[0].replace(/,/g, ''));
     }
-    
-    console.log('Final variant ID:', currentVariantId);
+
     return { currentVariantId, currentPrice };
   }
 
-  // Create modal iframe
-  function createModal(triggerButton = null) {
+  /* ------------------------------------------------------------------ *
+   * MODAL
+   * ------------------------------------------------------------------ */
+  function createModal(triggerBtn) {
     const iframe = document.createElement('iframe');
     const { currentVariantId, currentPrice } = getCurrentVariantInfo();
-    
-    iframe.src = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
-    
-    // Determine modal positioning based on style
-    if (settings.modalStyle === 'dropdown' && triggerButton) {
-      // Dropdown style - position below the button
-      const buttonRect = triggerButton.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
-      // Calculate position
-      let left = buttonRect.left;
-      let top = buttonRect.bottom + 10; // 10px gap below button
-      
-      // Ensure modal doesn't go off-screen
-      let modalWidth = settings.modalWidth.includes('vw') 
-        ? (parseInt(settings.modalWidth) / 100) * viewportWidth 
-        : parseInt(settings.modalWidth);
-      let modalHeight = parseInt(settings.modalHeight);
-      
-      // Responsive sizing for mobile devices
-      if (viewportWidth < 768) {
-        modalWidth = Math.min(modalWidth, viewportWidth - 40); // 20px margin on each side
-        modalHeight = Math.min(modalHeight, viewportHeight - 40); // 20px margin on top/bottom
-      }
-      
-      // Adjust horizontal position if needed
-      if (left + modalWidth > viewportWidth) {
-        left = viewportWidth - modalWidth - 20; // 20px margin from edge
-      }
-      if (left < 20) left = 20; // Minimum 20px from left edge
-      
-      // Adjust vertical position if needed
-      if (top + modalHeight > viewportHeight) {
-        // Show above button instead
-        top = buttonRect.top - modalHeight - 10;
-        if (top < 20) top = 20; // Minimum 20px from top edge
-      }
-      
+
+    iframe.src =
+      `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}` +
+      `&variantId=${encodeURIComponent(currentVariantId || '')}` +
+      `&title=${encodeURIComponent(settings.productTitle)}` +
+      `&price=${currentPrice}` +
+      `&userId=${encodeURIComponent(settings.userId)}`;
+    iframe.id = 'bidit-modal-iframe';
+
+    // dropdown mode
+    if (settings.modalStyle === 'dropdown' && triggerBtn) {
+      const rect = triggerBtn.getBoundingClientRect();
+      const { w, h } = getModalDims();
+
+      let left = rect.left;
+      let top = rect.bottom + 10;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const pxW = parseInt(w);
+      const pxH = parseInt(h);
+
+      if (left + pxW > vw) left = vw - pxW - 20;
+      if (left < 20) left = 20;
+      if (top + pxH > vh) top = rect.top - pxH - 10;
+      if (top < 20) top = 20;
+
       iframe.style.cssText = `
-        position: fixed;
-        top: ${top}px;
-        left: ${left}px;
-        width: ${modalWidth}px;
-        height: ${modalHeight}px;
-        border: none;
-        border-radius: ${settings.borderRadius};
-        z-index: 999999;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        background: white;
+        position:fixed;top:${top}px;left:${left}px;width:${w};height:${h};
+        border:none;border-radius:${settings.borderRadius};
+        z-index:999999;box-shadow:0 10px 40px rgba(0,0,0,.3);background:#fff;
       `;
     } else {
-      // Fullscreen style (default)
+      /* fullscreen fallback */
       iframe.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        border: none;
-        z-index: 999999;
-        background: rgba(0, 0, 0, 0.5);
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        border:none;z-index:999999;background:rgba(0,0,0,.5);
       `;
     }
-    
-    iframe.id = 'bidit-modal-iframe';
-    
-    // Handle modal close
-    window.addEventListener('message', function(event) {
-      if (event.origin !== settings.modalUrl) return;
-      
-      if (event.data.type === 'BIDIT_CLOSE') {
-        closeModal();
-      }
+
+    window.addEventListener('message', (ev) => {
+      if (ev.origin !== settings.modalUrl) return;
+      if (ev.data.type === 'BIDIT_CLOSE') closeModal();
     });
 
     return iframe;
   }
 
-  // Open modal
-  function openModal(triggerButton = null) {
-    const iframe = createModal(triggerButton);
-    document.body.appendChild(iframe);
-    
-    // Only hide body overflow for fullscreen mode
-    if (settings.modalStyle === 'fullscreen') {
-      document.body.style.overflow = 'hidden';
-    }
+  function openModal(btn) {
+    if (document.getElementById('bidit-modal-iframe')) return;
+    document.body.appendChild(createModal(btn));
+    if (settings.modalStyle === 'fullscreen') document.body.style.overflow = 'hidden';
   }
 
-  // Close modal
   function closeModal() {
-    const iframe = document.getElementById('bidit-modal-iframe');
-    if (iframe) {
-      iframe.remove();
-      document.body.style.overflow = '';
-    }
+    const ifr = document.getElementById('bidit-modal-iframe');
+    if (ifr) ifr.remove();
+    document.body.style.overflow = '';
   }
 
-  // Create BidIt button
-  function createBidItButton() {
-    const button = document.createElement('button');
-    button.className = 'bidit-button';
-    
-    // Create the button content with logo and text
-    button.innerHTML = `
-      <img 
-        src="https://res.cloudinary.com/stitchify/image/upload/v1752902760/b5ltsnlhwpan9rhknbir.png" 
-        alt="BidIt" 
-        style="height: 17px; width: auto;"
-      />
-      <span style="font-weight: 500; font-size: 14px;">Make an offer</span>
+  /* ------------------------------------------------------------------ *
+   * BUTTON HANDLING
+   * ------------------------------------------------------------------ */
+  function styleExistingBtn(btn) {
+    btn.innerHTML = `
+      <span style="font-weight:500;font-size:15px;">Make an offer with</span>
+      <img src="https://res.cloudinary.com/stitchify/image/upload/v1752903381/qxofvucv6vaumewupadp.png"
+           alt="BidIt" style="height:15px;width:auto;" />
     `;
-    
-    // Apply comprehensive styling that overrides merchant CSS
-    button.style.cssText = `
-      background: #FFF!important;
-      color: #000 !important;
-      border: #99999960 1px solid !important;
-      padding: 12px 24px !important;
-      border-radius: 0px !important;
-      font-weight: 600 !important;
-      margin-top: 10px !important;
-      width: 100% !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: space-between !important;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-      transition: all 0.3s ease !important;
-      cursor: pointer !important;
-      text-decoration: none !important;
-      outline: none !important;
-      position: relative !important;
-      z-index: 1 !important;
-      min-height: 48px !important;
-      box-sizing: border-box !important;
+    btn.style.cssText = `
+      background:#F85711!important;color:#fff!important;border:#99999960 1px solid!important;
+      padding:12px 24px!important;border-radius:0!important;font-weight:600!important;
+      margin-top:10px!important;width:100%!important;display:flex!important;gap:4.5px!important;
+      align-items:center!important;justify-content:center!important;cursor:pointer!important;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif!important;
+      transition:transform .2s ease,box-shadow .2s ease!important;min-height:48px!important;
     `;
-    
-    // Add hover effects
-    button.addEventListener('mouseenter', function() {
-      this.style.transform = 'translateY(-2px) !important';
-      this.style.boxShadow = '0 4px 12px rgba(240, 120, 60, 0.4) !important';
-    });
-    
-    button.addEventListener('mouseleave', function() {
-      this.style.transform = 'translateY(0) !important';
-      this.style.boxShadow = '0 2px 8px rgba(240, 120, 60, 0.3) !important';
-    });
-    
-    // Add click handler
-    button.addEventListener('click', function(e) {
+    btn.onmouseenter = () => {
+      btn.style.transform = 'translateY(-2px)';
+      btn.style.boxShadow = '0 4px 12px rgba(240,120,60,.4)';
+    };
+    btn.onmouseleave = () => {
+      btn.style.transform = 'translateY(0)';
+      btn.style.boxShadow = '0 2px 8px rgba(240,120,60,.3)';
+    };
+    btn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openModal(this);
-    });
-    
-    return button;
+      openModal(btn);
+    };
   }
 
-  // Initialize BidIt
+  function autoInjectBtn() {
+    const form = document.querySelector('form[action*="/cart/add"]');
+    if (!form) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    styleExistingBtn(btn);
+    form.appendChild(btn);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * VARIANT CHANGE LISTENER
+   * ------------------------------------------------------------------ */
+  function setupVariantListeners() {
+    const selectors = [
+      'select[name="id"]',
+      'select[data-variant-select]',
+      '.single-option-selector',
+      'input[name="id"]',
+      'input[data-variant-id]',
+      '[data-variant-selector]'
+    ];
+    selectors.forEach((sel) =>
+      document.querySelectorAll(sel).forEach((el) =>
+        el.addEventListener('change', refreshIFrameSrc)
+      )
+    );
+    document.addEventListener('variant:change', refreshIFrameSrc);
+
+    /* monitor URL variant changes */
+    let lastURL = location.href;
+    setInterval(() => {
+      if (location.href !== lastURL) {
+        lastURL = location.href;
+        refreshIFrameSrc();
+      }
+    }, 500);
+  }
+
+  function refreshIFrameSrc() {
+    const iframe = document.getElementById('bidit-modal-iframe');
+    if (!iframe) return;
+    const { currentVariantId, currentPrice } = getCurrentVariantInfo();
+    iframe.src =
+      `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}` +
+      `&variantId=${encodeURIComponent(currentVariantId || '')}` +
+      `&title=${encodeURIComponent(settings.productTitle)}` +
+      `&price=${currentPrice}` +
+      `&userId=${encodeURIComponent(settings.userId)}`;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * INIT
+   * ------------------------------------------------------------------ */
   function init() {
-    // Find existing BidIt buttons
-    const existingButtons = document.querySelectorAll(settings.buttonSelector);
-    
-    existingButtons.forEach(button => {
-      // Apply consistent styling to existing buttons
-      button.innerHTML = `
-      <span style="font-weight: 500; font-size: 15px;">Make an offer with</span>
-      <img 
-        src="https://res.cloudinary.com/stitchify/image/upload/v1752903381/qxofvucv6vaumewupadp.png" 
-        alt="BidIt" 
-        style="height: 15px; width: auto;"
-      />
-    `;
-    
-    // Apply comprehensive styling that overrides merchant CSS
-    button.style.cssText = `
-      background: #F85711!important;
-      color: #FFF !important;
-      border: #99999960 1px solid !important;
-      padding: 12px 24px !important;
-      border-radius: 0px !important;
-      gap: 4.5px !important;
-      font-weight: 600 !important;
-      margin-top: 10px !important;
-      width: 100% !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-      transition: all 0.3s ease !important;
-      cursor: pointer !important;
-      text-decoration: none !important;
-      outline: none !important;
-      position: relative !important;
-      z-index: 1 !important;
-      min-height: 48px !important;
-      box-sizing: border-box !important;
-    `;
-      
-      // Add hover effects
-      button.addEventListener('mouseenter', function() {
-        this.style.transform = 'translateY(-2px) !important';
-        this.style.boxShadow = '0 4px 12px rgba(240, 120, 60, 0.4) !important';
-      });
-      
-      button.addEventListener('mouseleave', function() {
-        this.style.transform = 'translateY(0) !important';
-        this.style.boxShadow = '0 2px 8px rgba(240, 120, 60, 0.3) !important';
-      });
-      
-      // Prevent form submission
-      button.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        openModal(this);
-      });
-    });
-
-    // Auto-inject button if no existing buttons found
-    if (existingButtons.length === 0) {
-      const productForm = document.querySelector('form[action*="/cart/add"]');
-      if (productForm) {
-        const bidItButton = createBidItButton();
-        productForm.appendChild(bidItButton);
-      }
-    }
-
-    // Add global close handler
-    document.addEventListener('keydown', function(event) {
-      if (event.key === 'Escape') {
-        closeModal();
-      }
-    });
-
-    // Listen for variant changes
-    function setupVariantChangeListeners() {
-      // Common Shopify variant selectors
-      const variantSelectors = [
-        'select[name="id"]',
-        'select[data-variant-select]',
-        '.single-option-selector',
-        'input[name="id"]',
-        'input[data-variant-id]',
-        '[data-variant-selector]'
-      ];
-
-      variantSelectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(element => {
-          element.addEventListener('change', function() {
-            console.log('Variant changed:', this.value);
-            // Update any existing modal with new variant info
-            const iframe = document.getElementById('bidit-modal-iframe');
-            if (iframe) {
-              const { currentVariantId, currentPrice } = getCurrentVariantInfo();
-              const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
-              iframe.src = newSrc;
-            }
-          });
-        });
-      });
-
-      // Listen for Shopify's custom variant change events
-      document.addEventListener('variant:change', function(event) {
-        console.log('Shopify variant change event:', event);
-        const iframe = document.getElementById('bidit-modal-iframe');
-        if (iframe) {
-          const { currentVariantId, currentPrice } = getCurrentVariantInfo();
-          const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
-          iframe.src = newSrc;
-        }
-      });
-
-      // Listen for URL changes (some themes update URL when variant changes)
-      let currentUrl = window.location.href;
-      setInterval(() => {
-        if (window.location.href !== currentUrl) {
-          currentUrl = window.location.href;
-          console.log('URL changed, updating modal');
-          const iframe = document.getElementById('bidit-modal-iframe');
-          if (iframe) {
-            const { currentVariantId, currentPrice } = getCurrentVariantInfo();
-            const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
-            iframe.src = newSrc;
-          }
-        }
-      }, 500); // Check more frequently for URL changes
-    }
-
-    // Setup variant change listeners
-    setupVariantChangeListeners();
+    const btns = document.querySelectorAll(settings.buttonSelector);
+    btns.forEach(styleExistingBtn);
+    if (btns.length === 0) autoInjectBtn();
+    setupVariantListeners();
+    document.addEventListener('keydown', (e) => e.key === 'Escape' && closeModal());
   }
 
-  // Wait for DOM to be ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  document.readyState === 'loading'
+    ? document.addEventListener('DOMContentLoaded', init)
+    : init();
 
-  // Expose global functions
-  window.BidIt = {
-    open: openModal,
-    close: closeModal,
-    init: init
-  };
-
-})(); 
+  /* expose */
+  window.BidIt = { open: openModal, close: closeModal, init };
+})();
+</script>

@@ -190,8 +190,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
     }
     
     if (discountPercent > product.max_discount_percent) {
-      // Too much discount - position 10-25 (red-orange)
-      position = 10 + (discountPercent - product.max_discount_percent) / (product.max_discount_percent * 2) * 15
+      // Too much discount - position 0-10 (red)
+      // Bigger discount = lower position (worse)
+      const excessDiscount = discountPercent - product.max_discount_percent
+      position = Math.max(0, 10 - (excessDiscount / 10) * 10) // Scale down as discount increases
       return { message: 'Too much discount!', color: 'text-orange-500', icon: <TrendingDown className="w-4 h-4" />, position }
     }
     
@@ -208,9 +210,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
       // Too little discount - position 25-60 (orange-yellow)
       if (product.min_discount_percent === 0) {
         // If no minimum discount required, position based on how close to full price
-        position = 25 + (discountPercent / 10) * 35 // Use 10% as reference point
+        // Closer to full price = higher position (better)
+        position = 60 - (discountPercent / 10) * 35 // Inverted: higher bid = higher position
       } else {
-        position = 25 + (discountPercent / product.min_discount_percent) * 35
+        position = 60 - (discountPercent / product.min_discount_percent) * 35
       }
       return { message: 'Try more discount', color: 'text-yellow-500', icon: <TrendingUp className="w-4 h-4" />, position }
     }
