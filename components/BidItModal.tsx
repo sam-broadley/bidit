@@ -453,7 +453,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogPortal>
         <DialogOverlay className="bg-gray-200/80 backdrop-blur-sm" />
-        <DialogContent className="w-[90vw] max-w-[400px] sm:max-w-sm h-[500px] sm:h-[600px] overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-4 sm:p-6">
+        <DialogContent className="h-full w-full overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-4 sm:p-6">
           <DialogHeader className="sr-only">
             <DialogTitle>
               {currentStep === 'success' ? 'Bid Successful!' : 
