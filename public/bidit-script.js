@@ -175,7 +175,7 @@
     // Create the button content with logo and text
     button.innerHTML = `
       <img 
-        src="https://res.cloudinary.com/stitchify/image/upload/v1752899998/vnxne8rzryvm4paahoqj.png" 
+        src="https://res.cloudinary.com/stitchify/image/upload/v1752902760/b5ltsnlhwpan9rhknbir.png" 
         alt="BidIt" 
         style="height: 20px; width: auto;"
       />
@@ -184,11 +184,11 @@
     
     // Apply comprehensive styling that overrides merchant CSS
     button.style.cssText = `
-      background: #F0783C !important;
+      background: #FFF!important;
       color: white !important;
-      border: none !important;
+      border: #99999960 1px solid !important;
       padding: 12px 24px !important;
-      border-radius: 50px !important;
+      border-radius: 0px !important;
       font-weight: 600 !important;
       margin-top: 10px !important;
       width: 100% !important;
@@ -196,7 +196,6 @@
       align-items: center !important;
       justify-content: space-between !important;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-      box-shadow: 0 2px 8px rgba(240, 120, 60, 0.3) !important;
       transition: all 0.3s ease !important;
       cursor: pointer !important;
       text-decoration: none !important;

@@ -33,6 +33,7 @@ export interface Bid {
 export interface BidLog {
   id: number
   bid_id?: number
+  bid_session_id?: number
   shopify_variant_id?: number
   event_type: string
   event_data?: any

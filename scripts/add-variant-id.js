@@ -47,10 +47,25 @@ async function addVariantIdColumn() {
       console.log('✅ variant_id column added to bid_logs table');
     }
 
+    // Add bid_session_id column to bid_logs table
+    const { error: sessionError } = await supabase.rpc('exec_sql', {
+      sql: `
+        ALTER TABLE public.bid_logs 
+        ADD COLUMN IF NOT EXISTS bid_session_id INTEGER;
+      `
+    });
+
+    if (sessionError) {
+      console.log('⚠️  Error adding bid_session_id to bid_logs:', sessionError.message);
+    } else {
+      console.log('✅ bid_session_id column added to bid_logs table');
+    }
+
     console.log('\n🎉 Migration complete!');
     console.log('\n📋 Updated schema:');
     console.log('- bids.shopify_variant_id (BIGINT)');
     console.log('- bid_logs.shopify_variant_id (BIGINT)');
+    console.log('- bid_logs.bid_session_id (INTEGER)');
 
   } catch (error) {
     console.error('❌ Migration failed:', error.message);

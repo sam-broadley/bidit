@@ -80,6 +80,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     try {
       await supabase.from('bid_logs').insert({
         bid_id: currentBidId,
+        bid_session_id: bidSessionId, // Add session ID for pre-bid events
         event_type: eventType,
         event_data: eventData
       })
