@@ -22,10 +22,42 @@
   // Merge config with defaults
   const settings = { ...defaults, ...config };
 
+  // Get current variant information
+  function getCurrentVariantInfo() {
+    // Try to get variant from common Shopify selectors
+    const variantSelect = document.querySelector('select[name="id"], select[data-variant-select], .single-option-selector');
+    const variantInput = document.querySelector('input[name="id"]:checked, input[data-variant-id]');
+    
+    let currentVariantId = settings.variantId;
+    let currentPrice = settings.productPrice;
+    
+    if (variantSelect && variantSelect.value) {
+      currentVariantId = variantSelect.value;
+    } else if (variantInput && variantInput.value) {
+      currentVariantId = variantInput.value;
+    }
+    
+    // Try to get current price from the page
+    const priceElement = document.querySelector('.price, .product-price, [data-price]');
+    if (priceElement) {
+      const priceText = priceElement.textContent || priceElement.getAttribute('data-price');
+      if (priceText) {
+        const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+        if (priceMatch) {
+          currentPrice = parseFloat(priceMatch[0].replace(/,/g, ''));
+        }
+      }
+    }
+    
+    return { currentVariantId, currentPrice };
+  }
+
   // Create modal iframe
   function createModal(triggerButton = null) {
     const iframe = document.createElement('iframe');
-    iframe.src = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(settings.variantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${settings.productPrice}&userId=${encodeURIComponent(settings.userId)}`;
+    const { currentVariantId, currentPrice } = getCurrentVariantInfo();
+    
+    iframe.src = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
     
     // Determine modal positioning based on style
     if (settings.modalStyle === 'dropdown' && triggerButton) {
@@ -257,6 +289,64 @@
         closeModal();
       }
     });
+
+    // Listen for variant changes
+    function setupVariantChangeListeners() {
+      // Common Shopify variant selectors
+      const variantSelectors = [
+        'select[name="id"]',
+        'select[data-variant-select]',
+        '.single-option-selector',
+        'input[name="id"]',
+        'input[data-variant-id]',
+        '[data-variant-selector]'
+      ];
+
+      variantSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+          element.addEventListener('change', function() {
+            console.log('Variant changed:', this.value);
+            // Update any existing modal with new variant info
+            const iframe = document.getElementById('bidit-modal-iframe');
+            if (iframe) {
+              const { currentVariantId, currentPrice } = getCurrentVariantInfo();
+              const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
+              iframe.src = newSrc;
+            }
+          });
+        });
+      });
+
+      // Listen for Shopify's custom variant change events
+      document.addEventListener('variant:change', function(event) {
+        console.log('Shopify variant change event:', event);
+        const iframe = document.getElementById('bidit-modal-iframe');
+        if (iframe) {
+          const { currentVariantId, currentPrice } = getCurrentVariantInfo();
+          const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
+          iframe.src = newSrc;
+        }
+      });
+
+      // Listen for URL changes (some themes update URL when variant changes)
+      let currentUrl = window.location.href;
+      setInterval(() => {
+        if (window.location.href !== currentUrl) {
+          currentUrl = window.location.href;
+          console.log('URL changed, updating modal');
+          const iframe = document.getElementById('bidit-modal-iframe');
+          if (iframe) {
+            const { currentVariantId, currentPrice } = getCurrentVariantInfo();
+            const newSrc = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(currentVariantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${currentPrice}&userId=${encodeURIComponent(settings.userId)}`;
+            iframe.src = newSrc;
+          }
+        }
+      }, 1000);
+    }
+
+    // Setup variant change listeners
+    setupVariantChangeListeners();
   }
 
   // Wait for DOM to be ready

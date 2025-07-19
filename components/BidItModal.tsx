@@ -142,7 +142,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
           bid_session_id: bidSessionId,
           user_id: userId && userId !== 'undefined' ? parseInt(userId) : null,
           product_id: product.id,
-          shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null,
+          // shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null, // Temporarily commented out
           amount: amount,
           status: 'pending'
         })
@@ -185,8 +185,20 @@ const BidItModal: React.FC<BidItModalProps> = ({
         bid_session_id: bidSessionId,
         user_id: userId,
         product_id: product?.id,
+        // shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null, // Temporarily commented out
         amount: amount
       })
+      
+      // Log more detailed error information
+      if (err && typeof err === 'object') {
+        console.error('Error details:', {
+          message: (err as any).message,
+          details: (err as any).details,
+          hint: (err as any).hint,
+          code: (err as any).code
+        })
+      }
+      
       setError('Failed to submit bid. Please try again.')
     } finally {
       setIsLoading(false)
