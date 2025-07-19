@@ -90,7 +90,11 @@
       this.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
     });
     
-    button.addEventListener('click', openModal);
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      openModal();
+    });
     
     return button;
   }
@@ -101,7 +105,12 @@
     const existingButtons = document.querySelectorAll(settings.buttonSelector);
     
     existingButtons.forEach(button => {
-      button.addEventListener('click', openModal);
+      // Prevent form submission
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openModal();
+      });
     });
 
     // Auto-inject button if no existing buttons found
