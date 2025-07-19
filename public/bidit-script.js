@@ -250,7 +250,7 @@
       border: #99999960 1px solid !important;
       padding: 12px 24px !important;
       border-radius: 0px !important;
-      gap: 3px !important;
+      gap: 4.5px !important;
       font-weight: 600 !important;
       margin-top: 10px !important;
       width: 100% !important;
