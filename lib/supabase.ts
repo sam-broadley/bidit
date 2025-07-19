@@ -22,6 +22,7 @@ export interface Bid {
   bid_session_id: number
   user_id: number
   product_id: number
+  shopify_variant_id?: number
   amount: number
   status: 'pending' | 'rejected' | 'accepted' | 'countered'
   counter_offer?: number
@@ -32,6 +33,7 @@ export interface Bid {
 export interface BidLog {
   id: number
   bid_id?: number
+  shopify_variant_id?: number
   event_type: string
   event_data?: any
   created_at: string

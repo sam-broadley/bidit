@@ -10,6 +10,7 @@ interface BidItModalProps {
   isOpen: boolean
   onClose: () => void
   shopifyProductId: string
+  shopifyVariantId?: string
   productTitle?: string
   productPrice?: number
   userId?: string
@@ -27,6 +28,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
   isOpen,
   onClose,
   shopifyProductId,
+  shopifyVariantId,
   productTitle = 'Product',
   productPrice = 0,
   userId
@@ -140,6 +142,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
           bid_session_id: bidSessionId,
           user_id: userId && userId !== 'undefined' ? parseInt(userId) : null,
           product_id: product.id,
+          shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null,
           amount: amount,
           status: 'pending'
         })

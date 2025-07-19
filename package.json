@@ -11,6 +11,7 @@
     "test:watch": "jest --watch",
     "setup": "node scripts/setup.js",
     "setup-db": "node scripts/setup-database.js",
+    "add-variant-id": "node scripts/add-variant-id.js",
     "test-connection": "node scripts/test-connection.js"
   },
   "dependencies": {

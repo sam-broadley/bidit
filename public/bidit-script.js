@@ -8,6 +8,7 @@
   const defaults = {
     modalUrl: 'https://bidit-tau.vercel.app',
     productId: '',
+    variantId: '',
     productTitle: '',
     productPrice: 0,
     userId: '',
@@ -24,7 +25,7 @@
   // Create modal iframe
   function createModal(triggerButton = null) {
     const iframe = document.createElement('iframe');
-    iframe.src = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&title=${encodeURIComponent(settings.productTitle)}&price=${settings.productPrice}&userId=${encodeURIComponent(settings.userId)}`;
+    iframe.src = `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}&variantId=${encodeURIComponent(settings.variantId || '')}&title=${encodeURIComponent(settings.productTitle)}&price=${settings.productPrice}&userId=${encodeURIComponent(settings.userId)}`;
     
     // Determine modal positioning based on style
     if (settings.modalStyle === 'dropdown' && triggerButton) {

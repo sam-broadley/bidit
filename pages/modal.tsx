@@ -7,6 +7,7 @@ export default function ModalPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalConfig, setModalConfig] = useState({
     shopifyProductId: '',
+    shopifyVariantId: '',
     productTitle: '',
     productPrice: 0,
     userId: ''
@@ -14,11 +15,12 @@ export default function ModalPage() {
 
   useEffect(() => {
     // Extract parameters from URL
-    const { productId, title, price, userId } = router.query
+    const { productId, variantId, title, price, userId } = router.query
     
     if (productId && title && price) {
       setModalConfig({
         shopifyProductId: productId as string,
+        shopifyVariantId: (variantId as string) || '',
         productTitle: title as string,
         productPrice: parseFloat(price as string),
         userId: (userId as string) || ''
@@ -41,6 +43,7 @@ export default function ModalPage() {
         isOpen={isModalOpen}
         onClose={handleClose}
         shopifyProductId={modalConfig.shopifyProductId}
+        shopifyVariantId={modalConfig.shopifyVariantId}
         productTitle={modalConfig.productTitle}
         productPrice={modalConfig.productPrice}
         userId={modalConfig.userId}
