@@ -1,0 +1,12 @@
+{
+  "products": [
+    {
+      "shopify_product_id": "gid://shopify/Product/123456789",
+      "title": "Premium Wireless Headphones",
+      "price": 299.99,
+      "bidit_enabled": true,
+      "min_discount_percent": 10,
+      "max_discount_percent": 25
+    }
+  ]
+}
