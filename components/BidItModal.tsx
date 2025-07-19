@@ -234,7 +234,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     switch (currentStep) {
       case 'product-info':
         return (
-          <div className="flex flex-col justify-between max-h-full">
+          <div className="flex flex-col justify-between h-full">
             {/* BidIt Logo */}
             <div className="text-center">
               <img 
@@ -285,7 +285,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
       case 'first-bid':
       case 'second-bid':
         return (
-          <div className="flex flex-col justify-between max-h-full">
+          <div className="flex flex-col justify-between h-full">
             {/* BidIt Logo */}
             <div className="text-center">
               <img 
@@ -367,7 +367,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       case 'success':
         return (
-          <div className="flex flex-col justify-between max-h-full text-center">
+          <div className="flex flex-col justify-between h-full text-center">
             {/* BidIt Logo */}
             <div className="text-center">
               <img 
@@ -410,7 +410,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       case 'failure':
         return (
-          <div className="flex flex-col justify-between max-h-full text-center">
+          <div className="flex flex-col justify-between h-full text-center">
             {/* BidIt Logo */}
             <div className="text-center">
               <img 
