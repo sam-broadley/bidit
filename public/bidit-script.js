@@ -117,31 +117,55 @@
   // Create BidIt button
   function createBidItButton() {
     const button = document.createElement('button');
-    button.textContent = settings.buttonText;
     button.className = 'bidit-button';
-    button.style.cssText = `
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 16px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    
+    // Create the button content with logo and text
+    button.innerHTML = `
+      <img 
+        src="https://res.cloudinary.com/stitchify/image/upload/v1752899998/vnxne8rzryvm4paahoqj.png" 
+        alt="BidIt" 
+        style="height: 20px; width: auto;"
+      />
+      <span style="font-weight: 500; font-size: 14px;">Make an offer</span>
     `;
     
+    // Apply comprehensive styling that overrides merchant CSS
+    button.style.cssText = `
+      background: #F0783C !important;
+      color: white !important;
+      border: none !important;
+      padding: 12px 24px !important;
+      border-radius: 50px !important;
+      font-weight: 600 !important;
+      margin-top: 10px !important;
+      width: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      box-shadow: 0 2px 8px rgba(240, 120, 60, 0.3) !important;
+      transition: all 0.3s ease !important;
+      cursor: pointer !important;
+      text-decoration: none !important;
+      outline: none !important;
+      position: relative !important;
+      z-index: 1 !important;
+      min-height: 48px !important;
+      box-sizing: border-box !important;
+    `;
+    
+    // Add hover effects
     button.addEventListener('mouseenter', function() {
-      this.style.transform = 'translateY(-2px)';
-      this.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+      this.style.transform = 'translateY(-2px) !important';
+      this.style.boxShadow = '0 4px 12px rgba(240, 120, 60, 0.4) !important';
     });
     
     button.addEventListener('mouseleave', function() {
-      this.style.transform = 'translateY(0)';
-      this.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
+      this.style.transform = 'translateY(0) !important';
+      this.style.boxShadow = '0 2px 8px rgba(240, 120, 60, 0.3) !important';
     });
     
+    // Add click handler
     button.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
@@ -157,6 +181,52 @@
     const existingButtons = document.querySelectorAll(settings.buttonSelector);
     
     existingButtons.forEach(button => {
+      // Apply consistent styling to existing buttons
+      button.innerHTML = `
+        <img 
+          src="https://res.cloudinary.com/stitchify/image/upload/v1752899998/vnxne8rzryvm4paahoqj.png" 
+          alt="BidIt" 
+          style="height: 20px; width: auto;"
+        />
+        <span style="font-weight: 500; font-size: 14px;">Make an offer</span>
+      `;
+      
+      // Apply comprehensive styling that overrides merchant CSS
+      button.style.cssText = `
+        background: #F0783C !important;
+        color: white !important;
+        border: none !important;
+        padding: 12px 24px !important;
+        border-radius: 50px !important;
+        font-weight: 600 !important;
+        margin-top: 10px !important;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        box-shadow: 0 2px 8px rgba(240, 120, 60, 0.3) !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
+        text-decoration: none !important;
+        outline: none !important;
+        position: relative !important;
+        z-index: 1 !important;
+        min-height: 48px !important;
+        box-sizing: border-box !important;
+      `;
+      
+      // Add hover effects
+      button.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px) !important';
+        this.style.boxShadow = '0 4px 12px rgba(240, 120, 60, 0.4) !important';
+      });
+      
+      button.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0) !important';
+        this.style.boxShadow = '0 2px 8px rgba(240, 120, 60, 0.3) !important';
+      });
+      
       // Prevent form submission
       button.addEventListener('click', function(e) {
         e.preventDefault();
