@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPortal, DialogOverlay } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -364,16 +364,19 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-center">
-            {currentStep === 'success' ? 'Bid Successful!' : 
-             currentStep === 'failure' ? 'Bid Results' : 
-             'BidIt - Make an Offer'}
-          </DialogTitle>
-        </DialogHeader>
-        {renderStep()}
-      </DialogContent>
+      <DialogPortal>
+        <DialogOverlay className="bg-black/50" />
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              {currentStep === 'success' ? 'Bid Successful!' : 
+               currentStep === 'failure' ? 'Bid Results' : 
+               'BidIt - Make an Offer'}
+            </DialogTitle>
+          </DialogHeader>
+          {renderStep()}
+        </DialogContent>
+      </DialogPortal>
     </Dialog>
   )
 }
