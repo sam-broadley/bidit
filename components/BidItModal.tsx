@@ -168,15 +168,6 @@ const BidItModal: React.FC<BidItModalProps> = ({
     
     const discountPercent = ((product.price - amount) / product.price) * 100
     
-    // Debug logging
-    console.log('Bid Quality Calculation:', {
-      amount,
-      productPrice: product.price,
-      discountPercent: discountPercent.toFixed(2),
-      minDiscount: product.min_discount_percent,
-      maxDiscount: product.max_discount_percent
-    })
-    
     // Calculate position based on acceptance likelihood (0-100%)
     let position = 50 // default middle
     
@@ -208,7 +199,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
         position = 60 - ((discountPercent - 25) / 25) * 20
       } else {
         // 50% to 30% discount: linear from 40% to 40%
-        position = 40
+        position = Math.max(0, 40)
       }
     } else {
       // Above max discount - rapid decline
@@ -217,10 +208,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
       const excessDiscount = discountPercent - product.max_discount_percent
       if (discountPercent <= 80) {
         // 30% to 80% discount: linear from 40% to 20%
-        position = 40 - ((discountPercent - 30) / 50) * 20
+        position = Math.max(0, 40 - ((discountPercent - 30) / 50) * 20)
       } else {
         // 80% to 95% discount: linear from 20% to 0%
-        position = 20 - ((discountPercent - 80) / 15) * 20
+        position = Math.max(0, 20 - ((discountPercent - 80) / 15) * 20)
       }
     }
     
@@ -485,16 +476,11 @@ const BidItModal: React.FC<BidItModalProps> = ({
                 <div className="space-y-3">
                   {/* Color Bar */}
                   <div className="relative h-3 bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 to-green-500 rounded-full overflow-hidden">
-                    {/* Position indicator */}
+                    {/* Position indicator - circle with shadow */}
                     <div 
-                      className="absolute top-0 w-1 h-full bg-white shadow-lg transform -translate-x-1/2"
+                      className="absolute top-1/2 w-4 h-4 bg-white rounded-full shadow-lg transform -translate-x-1/2 -translate-y-1/2 border-2 border-gray-200"
                       style={{ left: `${bidQuality.position}%` }}
                     />
-                  </div>
-                  
-                  {/* Optional: Show position percentage for debugging */}
-                  <div className="text-center text-xs text-gray-500">
-                    Position: {Math.round(bidQuality.position)}%
                   </div>
                 </div>
               )}
