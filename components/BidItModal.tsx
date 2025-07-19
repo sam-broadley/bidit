@@ -174,51 +174,68 @@ const BidItModal: React.FC<BidItModalProps> = ({
       productPrice: product.price,
       discountPercent: discountPercent.toFixed(2),
       minDiscount: product.min_discount_percent,
-      maxDiscount: product.max_discount_percent,
-      isAboveMax: discountPercent > product.max_discount_percent,
-      isInSweetSpot: discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent,
-      isBelowMin: discountPercent < product.min_discount_percent
+      maxDiscount: product.max_discount_percent
     })
     
-    // Calculate position on the bar (0 = red/bad, 100 = green/good)
+    // Calculate position based on acceptance likelihood (0-100%)
     let position = 50 // default middle
     
     if (amount > product.price) {
-      // Above retail price - position 0-10 (red)
-      position = Math.min(10, Math.max(0, (amount - product.price) / product.price * 50))
+      // Above retail price - very low chance of acceptance
+      position = Math.min(10, Math.max(0, 100 - (amount - product.price) / product.price * 100))
       return { message: 'Above retail price!', color: 'text-red-500', icon: <TrendingDown className="w-4 h-4" />, position }
     }
     
-    if (discountPercent > product.max_discount_percent) {
-      // Too much discount - position 0-10 (red)
-      // Bigger discount = lower position (worse)
-      const excessDiscount = discountPercent - product.max_discount_percent
-      position = Math.max(0, 10 - (excessDiscount / 10) * 10) // Scale down as discount increases
-      return { message: 'Too much discount!', color: 'text-orange-500', icon: <TrendingDown className="w-4 h-4" />, position }
-    }
+    // For bids within or outside the acceptable range, use a smooth curve
+    // Position represents likelihood of acceptance (0% = no chance, 100% = guaranteed)
     
-    if (discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent) {
-      // Sweet spot - position 60-80 (green)
-      // Closer to full price (lower discount) = better position (closer to 80)
-      const range = product.max_discount_percent - product.min_discount_percent
-      const withinRange = discountPercent - product.min_discount_percent
-      position = 80 - (withinRange / range) * 20 // Inverted: lower discount = higher position
-      return { message: 'Looking good!', color: 'text-green-500', icon: <TrendingUp className="w-4 h-4" />, position }
-    }
-    
-    if (discountPercent < product.min_discount_percent) {
-      // Too little discount - position 25-60 (orange-yellow)
-      if (product.min_discount_percent === 0) {
-        // If no minimum discount required, position based on how close to full price
-        // Closer to full price = higher position (better)
-        position = 60 - (discountPercent / 10) * 35 // Inverted: higher bid = higher position
+    if (discountPercent <= product.max_discount_percent) {
+      // Within or below max discount - use smooth curve
+      // $99 (0% discount) = 99% position
+      // $89 (11% discount) = 90% position  
+      // $75 (25% discount) = 60% position
+      // $50 (50% discount) = 40% position
+      
+      // Use linear interpolation with your calibration points
+      if (discountPercent <= 11) {
+        // 0% to 11% discount: linear from 99% to 90%
+        position = 99 - (discountPercent / 11) * 9
+      } else if (discountPercent <= 25) {
+        // 11% to 25% discount: linear from 90% to 60%
+        position = 90 - ((discountPercent - 11) / 14) * 30
+      } else if (discountPercent <= 50) {
+        // 25% to 50% discount: linear from 60% to 40%
+        position = 60 - ((discountPercent - 25) / 25) * 20
       } else {
-        position = 60 - (discountPercent / product.min_discount_percent) * 35
+        // 50% to 30% discount: linear from 40% to 40%
+        position = 40
       }
-      return { message: 'Try more discount', color: 'text-yellow-500', icon: <TrendingUp className="w-4 h-4" />, position }
+    } else {
+      // Above max discount - rapid decline
+      // $20 (80% discount) = 20% position
+      // $5 (95% discount) = 0% position
+      const excessDiscount = discountPercent - product.max_discount_percent
+      if (discountPercent <= 80) {
+        // 30% to 80% discount: linear from 40% to 20%
+        position = 40 - ((discountPercent - 30) / 50) * 20
+      } else {
+        // 80% to 95% discount: linear from 20% to 0%
+        position = 20 - ((discountPercent - 80) / 15) * 20
+      }
     }
     
-    return { message: 'Enter a bid', color: 'text-gray-500', icon: <Info className="w-4 h-4" />, position: 50 }
+    // Determine message and color based on position
+    if (position >= 80) {
+      return { message: 'Excellent offer!', color: 'text-green-500', icon: <TrendingUp className="w-4 h-4" />, position }
+    } else if (position >= 60) {
+      return { message: 'Looking good!', color: 'text-green-500', icon: <TrendingUp className="w-4 h-4" />, position }
+    } else if (position >= 40) {
+      return { message: 'Fair offer', color: 'text-yellow-500', icon: <TrendingUp className="w-4 h-4" />, position }
+    } else if (position >= 20) {
+      return { message: 'Try higher', color: 'text-orange-500', icon: <TrendingDown className="w-4 h-4" />, position }
+    } else {
+      return { message: 'Too low', color: 'text-red-500', icon: <TrendingDown className="w-4 h-4" />, position }
+    }
   }
 
   const submitBid = async () => {

@@ -1,10 +1,12 @@
-<script>
-(function () {
+/* bidit-script.js – standalone ES2020 */
+/* global window, document */
+
+(() => {
   'use strict';
 
-  /* ------------------------------------------------------------------ *
-   * CONFIG
-   * ------------------------------------------------------------------ */
+  /* ------------------------------------------------------------ *
+   * CONFIGURABLES
+   * ------------------------------------------------------------ */
   const themeCfg = window.BidItConfig || {};
   const defaults = {
     modalUrl: 'https://bidit-tau.vercel.app',
@@ -14,44 +16,42 @@
     productPrice: 0,
     userId: '',
     buttonSelector: '[data-bidit-button]',
-    modalStyle: 'dropdown',
+    modalStyle: 'dropdown',   // or 'fullscreen'
     borderRadius: '20px'
   };
   const settings = { ...defaults, ...themeCfg };
 
-  /* ------------------------------------------------------------------ *
-   * UTIL – RESPONSIVE MODAL DIMS
-   * ------------------------------------------------------------------ */
+  /* ------------------------------------------------------------ *
+   * RESPONSIVE DIMENSIONS
+   * ------------------------------------------------------------ */
   function getModalDims() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    if (vw <= 767) {                 // phones
+    if (vw <= 767) {
       return {
-        w: Math.min(vw - 40, 420) + 'px',
-        h: Math.min(vh - 40, 520) + 'px'
+        w: `${Math.min(vw - 40, 420)}px`,
+        h: `${Math.min(vh - 40, 520)}px`
       };
     }
-
-    if (vw <= 1199) {                // tablets / small desktop
+    if (vw <= 1199) {
       return { w: '450px', h: '600px' };
     }
-
-    return { w: '550px', h: '680px' }; // large desktop
+    return { w: '550px', h: '680px' };
   }
 
-  /* ------------------------------------------------------------------ *
-   * GET VARIANT + PRICE
-   * ------------------------------------------------------------------ */
+  /* ------------------------------------------------------------ *
+   * VARIANT + PRICE HELPERS
+   * ------------------------------------------------------------ */
   function getCurrentVariantInfo() {
     let currentVariantId = settings.variantId;
     let currentPrice = settings.productPrice;
 
-    // 1. URL param
-    const urlVariant = new URLSearchParams(window.location.search).get('variant');
+    // URL parameter
+    const urlVariant = new URLSearchParams(location.search).get('variant');
     if (urlVariant) currentVariantId = urlVariant;
 
-    // 2. DOM selects/inputs
+    // Common selectors / inputs
     if (!urlVariant) {
       const sel = document.querySelector(
         'select[name="id"], select[data-variant-select], .single-option-selector'
@@ -63,48 +63,47 @@
       else if (inp?.value) currentVariantId = inp.value;
     }
 
-    // 3. Price element
+    // Price element
     const priceEl = document.querySelector('.price, .product-price, [data-price]');
     if (priceEl) {
       const raw = priceEl.textContent || priceEl.getAttribute('data-price') || '';
-      const match = raw.match(/[\d,]+\.?\d*/);
-      if (match) currentPrice = parseFloat(match[0].replace(/,/g, ''));
+      const m = raw.match(/[\d,]+\.?\d*/);
+      if (m) currentPrice = parseFloat(m[0].replace(/,/g, ''));
     }
 
     return { currentVariantId, currentPrice };
   }
 
-  /* ------------------------------------------------------------------ *
+  /* ------------------------------------------------------------ *
    * MODAL
-   * ------------------------------------------------------------------ */
+   * ------------------------------------------------------------ */
   function createModal(triggerBtn) {
     const iframe = document.createElement('iframe');
     const { currentVariantId, currentPrice } = getCurrentVariantInfo();
+    const qs = [
+      `productId=${encodeURIComponent(settings.productId)}`,
+      `variantId=${encodeURIComponent(currentVariantId || '')}`,
+      `title=${encodeURIComponent(settings.productTitle)}`,
+      `price=${currentPrice}`,
+      `userId=${encodeURIComponent(settings.userId)}`
+    ].join('&');
+    iframe.src = `${settings.modalUrl}/modal?${qs}`;
+    iframe.id  = 'bidit-modal-iframe';
 
-    iframe.src =
-      `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}` +
-      `&variantId=${encodeURIComponent(currentVariantId || '')}` +
-      `&title=${encodeURIComponent(settings.productTitle)}` +
-      `&price=${currentPrice}` +
-      `&userId=${encodeURIComponent(settings.userId)}`;
-    iframe.id = 'bidit-modal-iframe';
-
-    // dropdown mode
     if (settings.modalStyle === 'dropdown' && triggerBtn) {
-      const rect = triggerBtn.getBoundingClientRect();
-      const { w, h } = getModalDims();
-
-      let left = rect.left;
-      let top = rect.bottom + 10;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const pxW = parseInt(w);
-      const pxH = parseInt(h);
+      /* dropdown positioning */
+      const { w, h }   = getModalDims();
+      const btnRect    = triggerBtn.getBoundingClientRect();
+      const vw         = window.innerWidth;
+      const vh         = window.innerHeight;
+      let   left       = btnRect.left;
+      let   top        = btnRect.bottom + 10;
+      const pxW        = parseInt(w, 10);
+      const pxH        = parseInt(h, 10);
 
       if (left + pxW > vw) left = vw - pxW - 20;
-      if (left < 20) left = 20;
-      if (top + pxH > vh) top = rect.top - pxH - 10;
-      if (top < 20) top = 20;
+      if (left < 20)       left = 20;
+      if (top + pxH > vh)  top  = Math.max(btnRect.top - pxH - 10, 20);
 
       iframe.style.cssText = `
         position:fixed;top:${top}px;left:${left}px;width:${w};height:${h};
@@ -119,16 +118,18 @@
       `;
     }
 
+    /* close handler */
     window.addEventListener('message', (ev) => {
-      if (ev.origin !== settings.modalUrl) return;
-      if (ev.data.type === 'BIDIT_CLOSE') closeModal();
+      if (ev.origin === settings.modalUrl && ev.data?.type === 'BIDIT_CLOSE') {
+        closeModal();
+      }
     });
 
     return iframe;
   }
 
   function openModal(btn) {
-    if (document.getElementById('bidit-modal-iframe')) return;
+    if (document.getElementById('bidit-modal-iframe')) return; // already open
     document.body.appendChild(createModal(btn));
     if (settings.modalStyle === 'fullscreen') document.body.style.overflow = 'hidden';
   }
@@ -139,13 +140,13 @@
     document.body.style.overflow = '';
   }
 
-  /* ------------------------------------------------------------------ *
-   * BUTTON HANDLING
-   * ------------------------------------------------------------------ */
-  function styleExistingBtn(btn) {
+  /* ------------------------------------------------------------ *
+   * BUTTON STYLING / INJECTION
+   * ------------------------------------------------------------ */
+  function styleBidItBtn(btn) {
     btn.innerHTML = `
       <span style="font-weight:500;font-size:15px;">Make an offer with</span>
-      <img src="https://res.cloudinary.com/stitchify/image/upload/v1752903381/qxofvucv6vaumewupadp.png"
+      <img src="https://res.cloudinary.com/stitchify/image/upload/v1752903381/qxofvucv6vaumewupadp.png" 
            alt="BidIt" style="height:15px;width:auto;" />
     `;
     btn.style.cssText = `
@@ -154,21 +155,21 @@
       margin-top:10px!important;width:100%!important;display:flex!important;gap:4.5px!important;
       align-items:center!important;justify-content:center!important;cursor:pointer!important;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif!important;
-      transition:transform .2s ease,box-shadow .2s ease!important;min-height:48px!important;
+      transition:transform .2s, box-shadow .2s!important;min-height:48px!important;
     `;
-    btn.onmouseenter = () => {
+    btn.addEventListener('mouseenter', () => {
       btn.style.transform = 'translateY(-2px)';
       btn.style.boxShadow = '0 4px 12px rgba(240,120,60,.4)';
-    };
-    btn.onmouseleave = () => {
+    });
+    btn.addEventListener('mouseleave', () => {
       btn.style.transform = 'translateY(0)';
       btn.style.boxShadow = '0 2px 8px rgba(240,120,60,.3)';
-    };
-    btn.onclick = (e) => {
+    });
+    btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       openModal(btn);
-    };
+    });
   }
 
   function autoInjectBtn() {
@@ -176,13 +177,26 @@
     if (!form) return;
     const btn = document.createElement('button');
     btn.type = 'button';
-    styleExistingBtn(btn);
+    styleBidItBtn(btn);
     form.appendChild(btn);
   }
 
-  /* ------------------------------------------------------------------ *
-   * VARIANT CHANGE LISTENER
-   * ------------------------------------------------------------------ */
+  /* ------------------------------------------------------------ *
+   * VARIANT CHANGE LISTENERS
+   * ------------------------------------------------------------ */
+  function refreshIframeSrc() {
+    const iframe = document.getElementById('bidit-modal-iframe');
+    if (!iframe) return;
+    const { currentVariantId, currentPrice } = getCurrentVariantInfo();
+    const newSrc =
+      `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}` +
+      `&variantId=${encodeURIComponent(currentVariantId || '')}` +
+      `&title=${encodeURIComponent(settings.productTitle)}` +
+      `&price=${currentPrice}` +
+      `&userId=${encodeURIComponent(settings.userId)}`;
+    iframe.src = newSrc;
+  }
+
   function setupVariantListeners() {
     const selectors = [
       'select[name="id"]',
@@ -192,51 +206,43 @@
       'input[data-variant-id]',
       '[data-variant-selector]'
     ];
-    selectors.forEach((sel) =>
-      document.querySelectorAll(sel).forEach((el) =>
-        el.addEventListener('change', refreshIFrameSrc)
-      )
-    );
-    document.addEventListener('variant:change', refreshIFrameSrc);
+    selectors.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((el) => {
+        el.addEventListener('change', refreshIframeSrc);
+      });
+    });
+    document.addEventListener('variant:change', refreshIframeSrc);
 
-    /* monitor URL variant changes */
+    /* Detect URL param changes */
     let lastURL = location.href;
     setInterval(() => {
       if (location.href !== lastURL) {
         lastURL = location.href;
-        refreshIFrameSrc();
+        refreshIframeSrc();
       }
     }, 500);
   }
 
-  function refreshIFrameSrc() {
-    const iframe = document.getElementById('bidit-modal-iframe');
-    if (!iframe) return;
-    const { currentVariantId, currentPrice } = getCurrentVariantInfo();
-    iframe.src =
-      `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}` +
-      `&variantId=${encodeURIComponent(currentVariantId || '')}` +
-      `&title=${encodeURIComponent(settings.productTitle)}` +
-      `&price=${currentPrice}` +
-      `&userId=${encodeURIComponent(settings.userId)}`;
-  }
-
-  /* ------------------------------------------------------------------ *
+  /* ------------------------------------------------------------ *
    * INIT
-   * ------------------------------------------------------------------ */
+   * ------------------------------------------------------------ */
   function init() {
     const btns = document.querySelectorAll(settings.buttonSelector);
-    btns.forEach(styleExistingBtn);
+    btns.forEach(styleBidItBtn);
     if (btns.length === 0) autoInjectBtn();
     setupVariantListeners();
-    document.addEventListener('keydown', (e) => e.key === 'Escape' && closeModal());
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
   }
 
-  document.readyState === 'loading'
-    ? document.addEventListener('DOMContentLoaded', init)
-    : init();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 
-  /* expose */
+  /* global helper */
   window.BidIt = { open: openModal, close: closeModal, init };
 })();
-</script>
