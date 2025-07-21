@@ -2,6 +2,8 @@
 
 A modern, shadcn-styled React modal that enables customers to make offers on products through an interactive bidding system. Built with Next.js, TypeScript, and Supabase for seamless Shopify integration.
 
+<!-- Dummy comment to trigger fresh deployment -->
+
 ## 🚀 Features
 
 - **Step-by-step bidding flow** - Guided user experience from product info to bid submission
