@@ -77,14 +77,12 @@ const BidItModal: React.FC<BidItModalProps> = ({
               console.log('User not found in database, clearing localStorage')
               localStorage.removeItem('bidit_user_id')
               localStorage.removeItem('bidit_user_email')
-              localStorage.removeItem('bidit_auth_user_id')
             }
           } catch (err) {
             console.warn('Error checking user existence:', err)
             // Clear localStorage on error
             localStorage.removeItem('bidit_user_id')
             localStorage.removeItem('bidit_user_email')
-            localStorage.removeItem('bidit_auth_user_id')
           }
         }
       }
@@ -281,6 +279,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
     // Get user ID from localStorage
     const storedUserId = localStorage.getItem('bidit_user_id')
     const currentUserId = storedUserId ? parseInt(storedUserId) : null
+    
+    console.log('Submitting bid with user ID:', currentUserId, 'from localStorage:', storedUserId)
 
     try {
       // Insert bid
@@ -380,7 +380,6 @@ const BidItModal: React.FC<BidItModalProps> = ({
     // Clear user data from localStorage
     localStorage.removeItem('bidit_user_id')
     localStorage.removeItem('bidit_user_email')
-    localStorage.removeItem('bidit_auth_user_id')
   }
 
   const handleClose = () => {
@@ -427,71 +426,48 @@ const BidItModal: React.FC<BidItModalProps> = ({
       // Check if user already exists in public.users table
       const { data: existingUser, error: fetchError } = await supabase
         .from('users')
-        .select('id, auth_user_id')
+        .select('id')
         .eq('email', email)
         .single()
 
       let userId: number
-      let authUserId: string | null = null
 
       if (fetchError && fetchError.code === 'PGRST116') {
-        // User doesn't exist, create new user
+        // User doesn't exist, create new user in public.users table only
         console.log('Creating new user for email:', email)
         
-        // Create a simple auth user with a generated password
-        const generatedPassword = `bidit_${Math.random().toString(36).substring(7)}`
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: email,
-          password: generatedPassword,
-        })
+        const { data: newUser, error: createError } = await supabase
+          .from('users')
+          .insert({ 
+            email: email 
+          })
+          .select('id')
+          .single()
 
-        if (authError) {
-          console.warn('Auth user creation failed:', authError.message)
-          // Continue with local storage only
-          userId = Math.floor(Math.random() * 1000000)
+        if (createError) {
+          console.warn('User creation failed:', createError.message)
+          // Fallback to local storage with a simple hash
+          userId = Math.abs(email.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % 1000000
         } else {
-          authUserId = authData.user?.id || null
-          console.log('Created auth user with ID:', authUserId)
-          
-          // Now create user in public.users table
-          const { data: newUser, error: createError } = await supabase
-            .from('users')
-            .insert({ 
-              auth_user_id: authUserId,
-              email: email 
-            })
-            .select('id')
-            .single()
-
-          if (createError) {
-            console.warn('Public user creation failed:', createError.message)
-            // Fallback to local storage
-            userId = Math.floor(Math.random() * 1000000)
-          } else {
-            userId = newUser.id
-            console.log('Created public user with ID:', userId)
-            logEvent('user_created', { email, userId, authUserId })
-          }
+          userId = newUser.id
+          console.log('Created user with ID:', userId)
+          logEvent('user_created', { email, userId })
         }
       } else if (fetchError) {
         throw fetchError
       } else {
         // User exists
         userId = existingUser.id
-        authUserId = existingUser.auth_user_id
-        console.log('Existing user found:', { userId, authUserId })
-        logEvent('user_logged_in', { email, userId, authUserId })
+        console.log('Existing user found:', { userId })
+        logEvent('user_logged_in', { email, userId })
       }
 
       // Store user info in localStorage for persistence
       localStorage.setItem('bidit_user_id', userId.toString())
       localStorage.setItem('bidit_user_email', email)
-      if (authUserId) {
-        localStorage.setItem('bidit_auth_user_id', authUserId)
-      }
 
       // Log successful login
-      logEvent('login_successful', { email, userId, authUserId }, Date.now() - stepStartTime)
+      logEvent('login_successful', { email, userId }, Date.now() - stepStartTime)
 
       // Move to first bid step
       trackStepTiming('first-bid')
@@ -512,9 +488,9 @@ const BidItModal: React.FC<BidItModalProps> = ({
           <div className="flex flex-col justify-between h-full">
             {/* Header */}
             <div className="text-center">
-              <h2 className="font-regular text-2xl mb-5">Connect to BidIt</h2>
+              <h2 className="font-regular text-2xl mb-5">Connect to Bidit</h2>
               <p className="text-black text-[15px] mb-5">
-              To continue with Bidit, log in using your The Iconic account to start.
+              To continue with Bidit, log in using your The Iconic account to start bidding.
               </p>
               <span className="text-sm text-gray-500 block">
                 This is a demo only - your email is used solely for tracking within the demonstration and isn't linked to your actual The Iconic account.
