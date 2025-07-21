@@ -44,6 +44,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [stepStartTime, setStepStartTime] = useState<number>(Date.now())
   const [stepTimings, setStepTimings] = useState<Record<string, number>>({})
   const [realtimeEvents, setRealtimeEvents] = useState<any[]>([])
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
 
   // Generate bid session ID on component mount
@@ -77,12 +79,16 @@ const BidItModal: React.FC<BidItModalProps> = ({
               console.log('User not found in database, clearing localStorage')
               localStorage.removeItem('bidit_user_id')
               localStorage.removeItem('bidit_user_email')
+              localStorage.removeItem('bidit_user_first_name')
+              localStorage.removeItem('bidit_user_last_name')
             }
           } catch (err) {
             console.warn('Error checking user existence:', err)
             // Clear localStorage on error
             localStorage.removeItem('bidit_user_id')
             localStorage.removeItem('bidit_user_email')
+            localStorage.removeItem('bidit_user_first_name')
+            localStorage.removeItem('bidit_user_last_name')
           }
         }
       }
@@ -376,10 +382,14 @@ const BidItModal: React.FC<BidItModalProps> = ({
     setStepStartTime(Date.now())
     setStepTimings({})
     setRealtimeEvents([])
+    setFirstName('')
+    setLastName('')
     setEmail('')
     // Clear user data from localStorage
     localStorage.removeItem('bidit_user_id')
     localStorage.removeItem('bidit_user_email')
+    localStorage.removeItem('bidit_user_first_name')
+    localStorage.removeItem('bidit_user_last_name')
   }
 
   const handleClose = () => {
@@ -414,8 +424,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
   }
 
   const handleLogin = async () => {
-    if (!email) {
-      setError('Please enter your email address')
+    if (!firstName || !lastName || !email) {
+      setError('Please enter your first name, last name, and email address')
       return
     }
 
@@ -439,7 +449,9 @@ const BidItModal: React.FC<BidItModalProps> = ({
         const { data: newUser, error: createError } = await supabase
           .from('users')
           .insert({ 
-            email: email 
+            email: email,
+            first_name: firstName,
+            last_name: lastName
           })
           .select('id')
           .single()
@@ -465,6 +477,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
       // Store user info in localStorage for persistence
       localStorage.setItem('bidit_user_id', userId.toString())
       localStorage.setItem('bidit_user_email', email)
+      localStorage.setItem('bidit_user_first_name', firstName)
+      localStorage.setItem('bidit_user_last_name', lastName)
 
       // Log successful login
       logEvent('login_successful', { email, userId }, Date.now() - stepStartTime)
@@ -500,6 +514,36 @@ const BidItModal: React.FC<BidItModalProps> = ({
             {/* Login Form */}
             <div className="login-form">
               <div className="input-group">
+                <label htmlFor="firstName" className="input-label">
+                  First name*
+                </label>
+                <input
+                  id="firstName"
+                  type="text"
+                  placeholder="First name*"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="login-input"
+                  style={{ borderRadius: '0px' }}
+                />
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="lastName" className="input-label">
+                  Last name*
+                </label>
+                <input
+                  id="lastName"
+                  type="text"
+                  placeholder="Last name*"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="login-input"
+                  style={{ borderRadius: '0px' }}
+                />
+              </div>
+
+              <div className="input-group">
                 <label htmlFor="email" className="input-label">
                   Email address*
                 </label>
@@ -520,7 +564,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
               <button 
                 onClick={handleLogin} 
-                disabled={isLoading || !email}
+                disabled={isLoading || !firstName || !lastName || !email}
                 className="login-button"
                 style={{ backgroundColor: '#42abc8', borderRadius: '0px' }}
               >
