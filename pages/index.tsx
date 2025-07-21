@@ -126,7 +126,6 @@ export default function HomePage() {
         shopifyProductId={sampleProduct.id}
         productTitle={sampleProduct.title}
         productPrice={sampleProduct.price}
-        userId="1" // Demo user ID
       />
     </div>
   )

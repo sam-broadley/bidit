@@ -13,7 +13,6 @@ interface BidItModalProps {
   shopifyVariantId?: string
   productTitle?: string
   productPrice?: number
-  userId?: string
 }
 
 type BidStep = 'login' | 'product-info' | 'first-bid' | 'second-bid' | 'success' | 'failure'
@@ -31,8 +30,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
   shopifyProductId,
   shopifyVariantId,
   productTitle = 'Product',
-  productPrice = 0,
-  userId
+  productPrice = 0
 }) => {
   const [currentStep, setCurrentStep] = useState<BidStep>('product-info')
   const [product, setProduct] = useState<Product | null>(null)
@@ -46,14 +44,53 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [stepStartTime, setStepStartTime] = useState<number>(Date.now())
   const [stepTimings, setStepTimings] = useState<Record<string, number>>({})
   const [realtimeEvents, setRealtimeEvents] = useState<any[]>([])
+  const [email, setEmail] = useState('')
 
   // Generate bid session ID on component mount
   useEffect(() => {
-    if (isOpen && !bidSessionId) {
-      // Use a smaller number for bid_session_id to avoid integer overflow
-      setBidSessionId(Math.floor(Math.random() * 1000000))
-      logEvent('modal_opened', { shopifyProductId })
+    const initializeModal = async () => {
+      if (isOpen && !bidSessionId) {
+        // Use a smaller number for bid_session_id to avoid integer overflow
+        setBidSessionId(Math.floor(Math.random() * 1000000))
+        logEvent('modal_opened', { shopifyProductId })
+        
+        // Check if user is already logged in
+        const storedUserId = localStorage.getItem('bidit_user_id')
+        const storedEmail = localStorage.getItem('bidit_user_email')
+        
+        if (storedUserId && storedEmail) {
+          // Verify user still exists in database
+          try {
+            const { data: user, error } = await supabase
+              .from('users')
+              .select('id')
+              .eq('id', storedUserId)
+              .eq('email', storedEmail)
+              .single()
+
+            if (!error && user) {
+              // User exists, skip to first bid
+              console.log('Auto-login successful for user:', storedUserId)
+              setCurrentStep('first-bid')
+            } else {
+              // User doesn't exist in database, clear localStorage
+              console.log('User not found in database, clearing localStorage')
+              localStorage.removeItem('bidit_user_id')
+              localStorage.removeItem('bidit_user_email')
+              localStorage.removeItem('bidit_auth_user_id')
+            }
+          } catch (err) {
+            console.warn('Error checking user existence:', err)
+            // Clear localStorage on error
+            localStorage.removeItem('bidit_user_id')
+            localStorage.removeItem('bidit_user_email')
+            localStorage.removeItem('bidit_auth_user_id')
+          }
+        }
+      }
     }
+
+    initializeModal()
   }, [isOpen, bidSessionId, shopifyProductId])
 
   // Set up real-time subscriptions
@@ -241,13 +278,17 @@ const BidItModal: React.FC<BidItModalProps> = ({
     setIsLoading(true)
     setError(null)
 
+    // Get user ID from localStorage
+    const storedUserId = localStorage.getItem('bidit_user_id')
+    const currentUserId = storedUserId ? parseInt(storedUserId) : null
+
     try {
       // Insert bid
       const { data: bidData, error: bidError } = await supabase
         .from('bids')
         .insert({
           bid_session_id: bidSessionId,
-          user_id: userId && userId !== 'undefined' ? parseInt(userId) : null,
+          user_id: currentUserId,
           product_id: product.id,
           shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null,
           amount: amount,
@@ -293,7 +334,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
       console.error('Error submitting bid:', err)
       console.log('Bid data that failed:', {
         bid_session_id: bidSessionId,
-        user_id: userId,
+        user_id: currentUserId,
         product_id: product?.id,
         shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null,
         amount: amount
@@ -335,6 +376,11 @@ const BidItModal: React.FC<BidItModalProps> = ({
     setStepStartTime(Date.now())
     setStepTimings({})
     setRealtimeEvents([])
+    setEmail('')
+    // Clear user data from localStorage
+    localStorage.removeItem('bidit_user_id')
+    localStorage.removeItem('bidit_user_email')
+    localStorage.removeItem('bidit_auth_user_id')
   }
 
   const handleClose = () => {
@@ -364,12 +410,244 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
   const handleStartBidding = () => {
     logEvent('start_bidding_clicked', { productTitle, productPrice })
-    trackStepTiming('first-bid')
-    setCurrentStep('first-bid')
+    trackStepTiming('login')
+    setCurrentStep('login')
+  }
+
+  const handleLogin = async () => {
+    if (!email) {
+      setError('Please enter your email address')
+      return
+    }
+
+    setIsLoading(true)
+    setError('')
+
+    try {
+      // Check if user already exists in public.users table
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('users')
+        .select('id, auth_user_id')
+        .eq('email', email)
+        .single()
+
+      let userId: number
+      let authUserId: string | null = null
+
+      if (fetchError && fetchError.code === 'PGRST116') {
+        // User doesn't exist, create new user
+        console.log('Creating new user for email:', email)
+        
+        // Create a simple auth user with a generated password
+        const generatedPassword = `bidit_${Math.random().toString(36).substring(7)}`
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: email,
+          password: generatedPassword,
+        })
+
+        if (authError) {
+          console.warn('Auth user creation failed:', authError.message)
+          // Continue with local storage only
+          userId = Math.floor(Math.random() * 1000000)
+        } else {
+          authUserId = authData.user?.id || null
+          console.log('Created auth user with ID:', authUserId)
+          
+          // Now create user in public.users table
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert({ 
+              auth_user_id: authUserId,
+              email: email 
+            })
+            .select('id')
+            .single()
+
+          if (createError) {
+            console.warn('Public user creation failed:', createError.message)
+            // Fallback to local storage
+            userId = Math.floor(Math.random() * 1000000)
+          } else {
+            userId = newUser.id
+            console.log('Created public user with ID:', userId)
+            logEvent('user_created', { email, userId, authUserId })
+          }
+        }
+      } else if (fetchError) {
+        throw fetchError
+      } else {
+        // User exists
+        userId = existingUser.id
+        authUserId = existingUser.auth_user_id
+        console.log('Existing user found:', { userId, authUserId })
+        logEvent('user_logged_in', { email, userId, authUserId })
+      }
+
+      // Store user info in localStorage for persistence
+      localStorage.setItem('bidit_user_id', userId.toString())
+      localStorage.setItem('bidit_user_email', email)
+      if (authUserId) {
+        localStorage.setItem('bidit_auth_user_id', authUserId)
+      }
+
+      // Log successful login
+      logEvent('login_successful', { email, userId, authUserId }, Date.now() - stepStartTime)
+
+      // Move to first bid step
+      trackStepTiming('first-bid')
+      setCurrentStep('first-bid')
+    } catch (err: any) {
+      console.error('Login error:', err)
+      setError('Login failed. Please try again.')
+      logEvent('login_failed', { email, error: err.message })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const renderStep = () => {
     switch (currentStep) {
+      case 'login':
+        return (
+          <div className="flex flex-col justify-between h-full">
+            {/* Header */}
+            <div className="text-center">
+              <h2 className="font-regular text-2xl mb-5">Connect to BidIt</h2>
+              <p className="text-black text-[15px] mb-5">
+              To continue with Bidit, log in using your The Iconic account to start.
+              </p>
+              <span className="text-sm text-gray-500 block">
+                This is a demo only - your email is used solely for tracking within the demonstration and isn't linked to your actual The Iconic account.
+                </span>
+            </div>
+
+            {/* Login Form */}
+            <div className="login-form">
+              <div className="input-group">
+                <label htmlFor="email" className="input-label">
+                  Email address*
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="Email address*"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="login-input"
+                  style={{ borderRadius: '0px' }}
+                />
+              </div>
+
+              {error && (
+                <div className="error-message">{error}</div>
+              )}
+
+              <button 
+                onClick={handleLogin} 
+                disabled={isLoading || !email}
+                className="login-button"
+                style={{ backgroundColor: '#42abc8', borderRadius: '0px' }}
+              >
+                {isLoading ? 'Logging in...' : 'Log in'}
+              </button>
+            </div>
+
+            <style jsx>{`
+              .login-title {
+                font-size: 24px;
+                font-weight: bold;
+                color: #1a1a1a;
+                margin-bottom: 8px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              }
+              
+              .login-description {
+                font-size: 14px;
+                color: #666;
+                line-height: 1.4;
+                margin-bottom: 24px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              }
+              
+              .login-form {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+              }
+              
+              .input-group {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+              }
+              
+              .input-label {
+                font-size: 14px;
+                font-weight: 500;
+                color: #1a1a1a;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              }
+              
+              .login-input {
+                width: 100%;
+                padding: 12px 16px;
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                font-size: 14px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background-color: white;
+                color: #1a1a1a;
+                transition: border-color 0.2s ease;
+              }
+              
+              .login-input:focus {
+                outline: none;
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+              }
+              
+              .login-input::placeholder {
+                color: #9ca3af;
+              }
+              
+              .login-button {
+                width: 100%;
+                padding: 12px 16px;
+                background-color: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                cursor: pointer;
+                transition: background-color 0.2s ease;
+              }
+              
+              .login-button:hover:not(:disabled) {
+                background-color: #2563eb;
+              }
+              
+              .login-button:disabled {
+                background-color: #9ca3af;
+                cursor: not-allowed;
+              }
+              
+              .error-message {
+                color: #dc2626;
+                font-size: 14px;
+                background-color: #fef2f2;
+                padding: 12px;
+                border-radius: 8px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              }
+            `}</style>
+
+            {/* Footer */}
+            
+          </div>
+        )
+
       case 'product-info':
         return (
           <div className="flex flex-col justify-between h-full">
@@ -409,14 +687,14 @@ const BidItModal: React.FC<BidItModalProps> = ({
             {/* Bids remaining and CTA */}
             <div className="text-center space-y-4">
               <p className="text-sm text-gray-900">
-                You have {bidsRemaining} bids remaining
+                You have {bidsRemaining} bids
               </p>
               <Button 
                 onClick={handleStartBidding} 
-                className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base flex items-center justify-center gap-2"
+                className="w-full bg-black hover:bg-gray-800 text-white font-normal py-4 rounded-[10px] text-base flex items-center justify-center gap-2"
               >
-                Start Bidding
-                <ArrowRight className="w-5 h-5" />
+                Login with<img src="https://res.cloudinary.com/stitchify/image/upload/v1753082476/vkndfqezsyzv14gwbkxf.png" alt="The Iconic" className="h-3" />
+                {/* <ArrowRight className="w-5 h-5" /> */}
               </Button>
             </div>
           </div>
@@ -449,7 +727,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
               {currentStep === 'second-bid' && (
                 <div className="flex items-center justify-center gap-2 text-red-600 font-bold text-lg">
                   <XCircle className="w-5 h-5" />
-                  <span>Bid Declined</span>
+                  <span>Bid Unsuccessful</span>
                 </div>
               )}
               
@@ -492,13 +770,13 @@ const BidItModal: React.FC<BidItModalProps> = ({
               )}
               
               <div className="text-center text-sm text-gray-600">
-                {bidsRemaining} bid{bidsRemaining !== 1 ? 's' : ''} remaining
+                You have {bidsRemaining} bid{bidsRemaining !== 1 ? 's' : ''}
               </div>
 
               <Button 
                 onClick={submitBid} 
                 disabled={isLoading || !bidAmount}
-                className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base"
+                className="w-full bg-orange-500 hover:bg-orange-700 text-white font-medium py-4 rounded-[10px] text-base"
               >
                 {isLoading ? 'Submitting...' : currentStep === 'second-bid' ? 'Submit Final Bid' : 'Submit Bid'}
               </Button>
@@ -536,13 +814,13 @@ const BidItModal: React.FC<BidItModalProps> = ({
             <div className="space-y-3"> 
               <Button 
                 onClick={handleAddToCart} 
-                className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base"
+                className="w-full bg-orange-500 hover:bg-orange-700 text-white font-medium py-4 rounded-[10px] text-base"
               >
                 Add to Cart
               </Button>
               <Button 
                 onClick={handleContinueShopping} 
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-4 rounded-[10px] text-base"
+                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium py-4 rounded-[10px] text-base"
               >
                 Continue Shopping
               </Button>
@@ -579,7 +857,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
             
             <Button 
               onClick={handleContinueShopping} 
-              className="w-full bg-black hover:bg-gray-800 text-white font-bold py-4 rounded-[10px] text-base"
+              className="w-full bg-black hover:bg-gray-800 text-white font-medium py-4 rounded-[10px] text-base"
             >
               Continue Shopping
             </Button>
