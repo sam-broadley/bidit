@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import BidItModal from '@/components/BidItModal'
 import { useRouter } from 'next/router'
+import { track } from '@vercel/analytics'
 
 export default function ModalPage() {
   const router = useRouter()
@@ -17,13 +18,22 @@ export default function ModalPage() {
     const { productId, variantId, title, price } = router.query
     
     if (productId && title && price) {
-      setModalConfig({
+      const config = {
         shopifyProductId: productId as string,
         shopifyVariantId: (variantId as string) || '',
         productTitle: title as string,
         productPrice: parseFloat(price as string)
-      })
+      }
+      setModalConfig(config)
       setIsModalOpen(true)
+      
+      // Track modal page load
+      track('bidit_modal_page_loaded', {
+        productId: config.shopifyProductId,
+        productTitle: config.productTitle,
+        productPrice: config.productPrice,
+        variantId: config.shopifyVariantId || null
+      })
     }
   }, [router.query])
 

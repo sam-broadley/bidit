@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { supabase, type Product, type Bid, type BidLog } from '@/lib/supabase'
 import { Info, DollarSign, CheckCircle, XCircle, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
+import { track } from '@vercel/analytics'
 
 interface BidItModalProps {
   isOpen: boolean
@@ -47,6 +48,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
 
   // Generate bid session ID on component mount
   useEffect(() => {
@@ -55,6 +57,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
         // Use a smaller number for bid_session_id to avoid integer overflow
         setBidSessionId(Math.floor(Math.random() * 1000000))
         logEvent('modal_opened', { shopifyProductId })
+        track('bidit_modal_opened', { productId: shopifyProductId, productTitle })
         
         // Check if user is already logged in
         const storedUserId = localStorage.getItem('bidit_user_id')
@@ -204,6 +207,11 @@ const BidItModal: React.FC<BidItModalProps> = ({
     setStepStartTime(currentTime)
   }
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
   const getBidQuality = (amount: number): BidQuality => {
     if (!product) return { message: 'Enter a bid', color: 'text-gray-500', icon: <Info className="w-4 h-4" />, position: 50 }
     
@@ -307,6 +315,12 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       setCurrentBidId(bidData.id)
       logEvent('bid_submitted', { bidId: bidData.id, amount })
+      track('bidit_bid_submitted', { 
+        productId: shopifyProductId, 
+        productTitle, 
+        bidAmount: amount, 
+        productPrice 
+      })
 
       // Simulate bid evaluation (in real app, this would be an edge function)
       const discountPercent = ((product.price - amount) / product.price) * 100
@@ -323,6 +337,13 @@ const BidItModal: React.FC<BidItModalProps> = ({
         .eq('id', bidData.id)
 
       logEvent('bid_evaluated', { bidId: bidData.id, accepted: isAccepted })
+      track('bidit_bid_evaluated', { 
+        productId: shopifyProductId, 
+        productTitle, 
+        bidAmount: amount, 
+        productPrice, 
+        accepted: isAccepted 
+      })
 
       if (isAccepted) {
         trackStepTiming('success')
@@ -363,6 +384,15 @@ const BidItModal: React.FC<BidItModalProps> = ({
     }
   }
 
+  const handleEmailChange = (value: string) => {
+    setEmail(value)
+    if (value && !validateEmail(value)) {
+      setEmailError('Please enter a valid email address')
+    } else {
+      setEmailError(null)
+    }
+  }
+
   const handleBidChange = (value: string) => {
     setBidAmount(value)
     const amount = parseFloat(value)
@@ -379,6 +409,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     setBidsRemaining(2)
     setBidQuality(null)
     setError(null)
+    setEmailError(null)
     setCurrentBidId(null)
     setStepStartTime(Date.now())
     setStepTimings({})
@@ -404,22 +435,41 @@ const BidItModal: React.FC<BidItModalProps> = ({
       totalSessionTimeMs: Object.values(stepTimings).reduce((sum, time) => sum + time, 0) + timeSpent
     }, timeSpent) // Pass timeSpent to the dedicated column
     
+    track('bidit_modal_closed', { 
+      productId: shopifyProductId, 
+      productTitle, 
+      step: currentStep,
+      timeSpentSeconds: Math.round(timeSpent / 1000)
+    })
+    
     resetModal()
     onClose()
   }
 
   const handleAddToCart = () => {
     logEvent('add_to_cart_clicked', { bidAmount, productTitle, productPrice })
+    track('bidit_add_to_cart', { 
+      productId: shopifyProductId, 
+      productTitle, 
+      bidAmount, 
+      productPrice 
+    })
     handleClose()
   }
 
   const handleContinueShopping = () => {
     logEvent('continue_shopping_clicked', { step: currentStep })
+    track('bidit_continue_shopping', { 
+      productId: shopifyProductId, 
+      productTitle, 
+      step: currentStep 
+    })
     handleClose()
   }
 
   const handleStartBidding = () => {
     logEvent('start_bidding_clicked', { productTitle, productPrice })
+    track('bidit_start_bidding', { productId: shopifyProductId, productTitle, productPrice })
     trackStepTiming('login')
     setCurrentStep('login')
   }
@@ -427,6 +477,11 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const handleLogin = async () => {
     if (!firstName || !lastName || !email) {
       setError('Please enter your first name, last name, and email address')
+      return
+    }
+
+    if (!validateEmail(email)) {
+      setEmailError('Please enter a valid email address')
       return
     }
 
@@ -483,6 +538,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       // Log successful login
       logEvent('login_successful', { email, userId }, Date.now() - stepStartTime)
+      track('bidit_login_successful', { productId: shopifyProductId, productTitle })
 
       // Move to first bid step
       trackStepTiming('first-bid')
@@ -553,10 +609,13 @@ const BidItModal: React.FC<BidItModalProps> = ({
                   type="email"
                   placeholder="Email address*"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="login-input"
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  className={`login-input ${emailError ? 'border-red-500' : ''}`}
                   style={{ borderRadius: '0px' }}
                 />
+                {emailError && (
+                  <div className="text-red-500 text-sm mt-1">{emailError}</div>
+                )}
               </div>
 
               {error && (
@@ -565,7 +624,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
               <button 
                 onClick={handleLogin} 
-                disabled={isLoading || !firstName || !lastName || !email}
+                disabled={isLoading || !firstName || !lastName || !email || !!emailError}
                 className="login-button"
                 style={{ backgroundColor: '#42abc8', borderRadius: '0px' }}
               >

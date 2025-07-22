@@ -245,4 +245,4 @@
 
   /* global helper */
   window.BidIt = { open: openModal, close: closeModal, init };
-})();
+})(); 

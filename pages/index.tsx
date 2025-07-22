@@ -2,9 +2,19 @@ import React, { useState } from 'react'
 import BidItModal from '@/components/BidItModal'
 import { Button } from '@/components/ui/button'
 import { ShoppingBag, DollarSign } from 'lucide-react'
+import { track } from '@vercel/analytics'
 
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const handleOpenModal = () => {
+    setIsModalOpen(true)
+    track('bidit_demo_opened', { 
+      productId: sampleProduct.id, 
+      productTitle: sampleProduct.title, 
+      productPrice: sampleProduct.price 
+    })
+  }
 
   // Sample product data (in real app, this would come from Shopify)
   const sampleProduct = {
@@ -44,7 +54,7 @@ export default function HomePage() {
 
           <div className="space-y-4">
             <Button 
-              onClick={() => setIsModalOpen(true)}
+              onClick={handleOpenModal}
               className="w-full bg-blue-600 hover:bg-blue-700"
             >
               Try BidIt - Make an Offer
