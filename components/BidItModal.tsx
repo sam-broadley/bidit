@@ -212,10 +212,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
     // Calculate position based on acceptance likelihood (0-100%)
     let position = 50 // default middle
     
-    if (amount > product.price) {
-      // Above retail price - very low chance of acceptance
-      position = Math.min(10, Math.max(0, 100 - (amount - product.price) / product.price * 100))
-      return { message: 'Above retail price!', color: 'text-red-500', icon: <TrendingDown className="w-4 h-4" />, position }
+    if (amount >= product.price) {
+      // At or above retail price - guaranteed acceptance
+      position = 100
+      return { message: 'Guaranteed acceptance!', color: 'text-green-500', icon: <TrendingUp className="w-4 h-4" />, position }
     }
     
     // For bids within or outside the acceptable range, use a smooth curve
@@ -310,7 +310,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       // Simulate bid evaluation (in real app, this would be an edge function)
       const discountPercent = ((product.price - amount) / product.price) * 100
-      const isAccepted = discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent
+      // Accept bids that are at or above the product price, or within the acceptable discount range
+      const isAccepted = amount >= product.price || (discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent)
 
       // Update bid status
       await supabase
