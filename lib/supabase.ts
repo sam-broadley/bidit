@@ -14,6 +14,7 @@ export interface Product {
   bidit_enabled: boolean
   min_discount_percent: number
   max_discount_percent: number
+  counter_bid: boolean
   created_at: string
 }
 

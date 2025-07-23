@@ -3,22 +3,7 @@ import BidItModal from '@/components/BidItModal'
 import { Button } from '@/components/ui/button'
 import { ShoppingBag, DollarSign } from 'lucide-react'
 import { track } from '@vercel/analytics'
-
-// Utility function to decode HTML entities
-const decodeHtmlEntities = (text: string): string => {
-  if (!text) return text
-  
-  return text
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, '/')
-    .replace(/&#x60;/g, '`')
-    .replace(/&#x3D;/g, '=')
-}
+import { decodeHtmlEntities } from '@/lib/utils'
 
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)

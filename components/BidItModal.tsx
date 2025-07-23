@@ -6,22 +6,7 @@ import { Label } from '@/components/ui/label'
 import { supabase, type Product, type Bid, type BidLog } from '@/lib/supabase'
 import { Info, DollarSign, CheckCircle, XCircle, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
 import { track } from '@vercel/analytics'
-
-// Utility function to decode HTML entities
-const decodeHtmlEntities = (text: string): string => {
-  if (!text) return text
-  
-  return text
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, '/')
-    .replace(/&#x60;/g, '`')
-    .replace(/&#x3D;/g, '=')
-}
+import { decodeHtmlEntities } from '@/lib/utils'
 
 interface BidItModalProps {
   isOpen: boolean
@@ -32,7 +17,7 @@ interface BidItModalProps {
   productPrice?: number
 }
 
-type BidStep = 'login' | 'product-info' | 'first-bid' | 'second-bid' | 'success' | 'failure'
+type BidStep = 'login' | 'product-info' | 'first-bid' | 'second-bid' | 'counter-bid' | 'success' | 'failure'
 
 interface BidQuality {
   message: string
@@ -67,6 +52,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
+  const [counterOffer, setCounterOffer] = useState<number | null>(null)
 
   // Generate bid session ID on component mount
   useEffect(() => {
@@ -230,6 +216,50 @@ const BidItModal: React.FC<BidItModalProps> = ({
     return emailRegex.test(email)
   }
 
+  const calculateCounterOffer = (customerBid: number): number => {
+    if (!product) return productPrice
+    
+    const discountPercent = ((product.price - customerBid) / product.price) * 100
+    
+    // If customer bid is at or above retail price, no counter needed
+    if (customerBid >= product.price) {
+      return product.price
+    }
+    
+    // Calculate the minimum acceptable price based on max discount
+    const minAcceptablePrice = product.price * (1 - product.max_discount_percent / 100)
+    
+    // If customer bid is within acceptable range, give a small counter
+    if (discountPercent <= product.max_discount_percent) {
+      // Customer bid is reasonable - offer a small improvement
+      const improvement = Math.max(1, customerBid * 0.05) // 5% improvement or $1 minimum
+      return Math.min(product.price, customerBid + improvement)
+    }
+    
+    // If customer bid is too low, calculate counter based on how close they were to the floor
+    if (discountPercent > product.max_discount_percent) {
+      // Calculate how close the customer bid is to the minimum acceptable price (floor)
+      const distanceFromFloor = minAcceptablePrice - customerBid
+      const maxPossibleDistance = product.price - minAcceptablePrice // Maximum possible distance from floor
+      
+      // The closer they were to the floor, the BETTER the counter offer (lower price)
+      // If distanceFromFloor is 0, they're at the floor (best case)
+      // If distanceFromFloor is maxPossibleDistance, they're at $0 (worst case)
+      const proximityToFloor = Math.max(0, 1 - (distanceFromFloor / maxPossibleDistance))
+      
+      // Calculate counter offer: closer bids to floor get BETTER deals (lower prices)
+      // Range from minAcceptablePrice (best deal) to a higher price (worse deal)
+      // Closer bids get closer to the floor price
+      const maxCounterPrice = product.price * 0.95 // Cap at 95% of retail price
+      const counterPrice = minAcceptablePrice + (maxCounterPrice - minAcceptablePrice) * (1 - proximityToFloor)
+      
+      // Ensure customer gets at least a 5% improvement on their bid
+      return Math.max(counterPrice, customerBid * 1.05)
+    }
+    
+    return product.price
+  }
+
   const getBidQuality = (amount: number): BidQuality => {
     if (!product) return { message: 'Enter a bid', color: 'text-gray-500', icon: <Info className="w-4 h-4" />, position: 50 }
     
@@ -342,36 +372,61 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       // Simulate bid evaluation (in real app, this would be an edge function)
       const discountPercent = ((product.price - amount) / product.price) * 100
+      
       // Accept bids that are at or above the product price, or within the acceptable discount range
       const isAccepted = amount >= product.price || (discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent)
+      
+      let bidStatus = isAccepted ? 'accepted' : 'rejected'
+      let counterOfferAmount = null
+      
+      // Counter-bid is ONLY available after 2 failed bids (when bidsRemaining = 0)
+      const shouldCounterBid = product.counter_bid && !isAccepted && bidsRemaining <= 1
+      
+      // If counter-bid is enabled and this is the last bid, calculate counter-offer
+      if (shouldCounterBid) {
+        counterOfferAmount = calculateCounterOffer(amount)
+        bidStatus = 'countered'
+        setCounterOffer(counterOfferAmount)
+      }
 
       // Update bid status
       await supabase
         .from('bids')
         .update({ 
-          status: isAccepted ? 'accepted' : 'rejected',
+          status: bidStatus,
+          counter_offer: counterOfferAmount,
           responded_at: new Date().toISOString()
         })
         .eq('id', bidData.id)
 
-      logEvent('bid_evaluated', { bidId: bidData.id, accepted: isAccepted })
+      logEvent('bid_evaluated', { bidId: bidData.id, accepted: isAccepted, countered: bidStatus === 'countered' })
       track('bidit_bid_evaluated', { 
         productId: shopifyProductId, 
         productTitle: decodedProductTitle, 
         bidAmount: amount, 
         productPrice, 
-        accepted: isAccepted 
+        accepted: isAccepted,
+        countered: bidStatus === 'countered',
+        counterOffer: counterOfferAmount
       })
 
       if (isAccepted) {
         trackStepTiming('success')
         setCurrentStep('success')
+      } else if (bidStatus === 'countered') {
+        // Counter-bid is shown after 2 failed bids
+        trackStepTiming('counter-bid')
+        setCurrentStep('counter-bid')
       } else {
+        // Bid was rejected - reduce remaining bids
         setBidsRemaining(prev => prev - 1)
+        
         if (bidsRemaining <= 1) {
+          // This was the last bid and no counter-bid was offered
           trackStepTiming('failure')
           setCurrentStep('failure')
         } else {
+          // Still have more bids remaining
           trackStepTiming('second-bid')
           setCurrentStep('second-bid')
         }
@@ -429,6 +484,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     setError(null)
     setEmailError(null)
     setCurrentBidId(null)
+    setCounterOffer(null)
     setStepStartTime(Date.now())
     setStepTimings({})
     setRealtimeEvents([])
@@ -483,6 +539,54 @@ const BidItModal: React.FC<BidItModalProps> = ({
       step: currentStep 
     })
     handleClose()
+  }
+
+  const handleAcceptCounterOffer = async () => {
+    if (!currentBidId || !counterOffer) return
+
+    try {
+      // Update bid status to accepted with counter offer
+      await supabase
+        .from('bids')
+        .update({ 
+          status: 'accepted',
+          responded_at: new Date().toISOString()
+        })
+        .eq('id', currentBidId)
+
+      logEvent('counter_offer_accepted', { bidId: currentBidId, counterOffer })
+      track('bidit_counter_offer_accepted', { 
+        productId: shopifyProductId, 
+        productTitle: decodedProductTitle, 
+        originalBid: bidAmount,
+        counterOffer 
+      })
+
+      trackStepTiming('success')
+      setCurrentStep('success')
+    } catch (err) {
+      console.error('Error accepting counter offer:', err)
+      setError('Failed to accept counter offer. Please try again.')
+    }
+  }
+
+  const handleRejectCounterOffer = () => {
+    logEvent('counter_offer_rejected', { bidId: currentBidId, counterOffer })
+    track('bidit_counter_offer_rejected', { 
+      productId: shopifyProductId, 
+      productTitle: decodedProductTitle, 
+      originalBid: bidAmount,
+      counterOffer 
+    })
+
+    setBidsRemaining(prev => prev - 1)
+    if (bidsRemaining <= 1) {
+      trackStepTiming('failure')
+      setCurrentStep('failure')
+    } else {
+      trackStepTiming('second-bid')
+      setCurrentStep('second-bid')
+    }
   }
 
   const handleStartBidding = () => {
@@ -882,6 +986,64 @@ const BidItModal: React.FC<BidItModalProps> = ({
           </div>
         )
 
+      case 'counter-bid':
+        return (
+          <div className="flex flex-col justify-between h-full">
+            {/* BidIt Logo */}
+            <div className="text-center">
+              <img 
+                src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                alt="BidIt" 
+                className="h-8 mx-auto"
+              />
+            </div>
+
+            <div className="space-y-6">
+              {/* Failure Message with Previous Bid */}
+              <div className="text-center">
+                <div className="flex justify-center mb-4">
+                  <XCircle className="w-16 h-16 text-red-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-red-600 mb-2">Your Bid was Not Successful</h3>
+                <p className="text-sm text-gray-500 mb-1">Your last bid:</p>
+                <div className="text-2xl font-bold text-gray-700 mb-4">
+                  ${bidAmount}
+                </div>
+              </div>
+
+              <div className="text-center">
+                <div className="bg-orange-50 p-6 rounded-xl border border-orange-200">
+                  <p className="text-gray-700 mb-3">
+                    We'd like to make you a special counter offer:
+                  </p>
+                  <div className="text-3xl font-bold text-green-600 mb-2">
+                    ${counterOffer?.toFixed(2)}
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    That's ${(productPrice - (counterOffer || 0)).toFixed(2)} off
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Button 
+                  onClick={handleAcceptCounterOffer}
+                  className="w-full bg-orange-500 hover:bg-orange-700 text-white font-medium py-4 rounded-[10px] text-base"
+                >
+                  Accept Offer
+                </Button>
+                
+                <Button 
+                  onClick={handleContinueShopping}
+                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium py-4 rounded-[10px] text-base"
+                >
+                  Continue Shopping
+                </Button>
+              </div>
+            </div>
+          </div>
+        )
+
       case 'success':
         return (
           <div className="flex flex-col justify-between h-full text-center">
@@ -900,12 +1062,23 @@ const BidItModal: React.FC<BidItModalProps> = ({
             <div className="flex justify-center">
               <CheckCircle className="w-16 h-16 text-green-500" />
             </div>
-              <h3 className="text-2xl font-bold text-green-600">Your Bid was Successful!</h3>
+              <h3 className="text-2xl font-bold text-green-600">
+                {counterOffer ? 'Last Chance Offer Accepted!' : 'Your Bid was Successful!'}
+              </h3>
               <p className="text-gray-700">
-                Congratulations! Your bid of <span className="font-bold text-orange-500">${bidAmount}</span> was accepted.
+                {counterOffer ? (
+                  <>
+                    Congratulations! You've accepted our last chance offer of{' '}
+                    <span className="font-bold text-orange-500">${counterOffer.toFixed(2)}</span>.
+                  </>
+                ) : (
+                  <>
+                    Congratulations! Your bid of <span className="font-bold text-orange-500">${bidAmount}</span> was accepted.
+                  </>
+                )}
               </p>
               <p className="text-sm text-gray-500">
-                You can now purchase this item at your bid price.
+                You can now purchase this item at the agreed price.
               </p>
             </div>
             

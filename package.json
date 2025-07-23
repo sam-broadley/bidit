@@ -12,7 +12,8 @@
     "setup": "node scripts/setup.js",
     "setup-db": "node scripts/setup-database.js",
     "add-variant-id": "node scripts/add-variant-id.js",
-    "test-connection": "node scripts/test-connection.js"
+    "test-connection": "node scripts/test-connection.js",
+    "setup-counter-bid": "node scripts/add-counter-bid-feature.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",
