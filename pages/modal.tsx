@@ -18,10 +18,18 @@ export default function ModalPage() {
     const { productId, variantId, title, price } = router.query
     
     if (productId && title && price) {
+      // Decode the title to handle HTML entities like &#39;
+      const decodedTitle = decodeURIComponent(title as string)
+        .replace(/&#39;/g, "'")
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+      
       const config = {
         shopifyProductId: productId as string,
         shopifyVariantId: (variantId as string) || '',
-        productTitle: title as string,
+        productTitle: decodedTitle,
         productPrice: parseFloat(price as string)
       }
       setModalConfig(config)

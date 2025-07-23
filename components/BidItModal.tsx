@@ -7,6 +7,22 @@ import { supabase, type Product, type Bid, type BidLog } from '@/lib/supabase'
 import { Info, DollarSign, CheckCircle, XCircle, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
 import { track } from '@vercel/analytics'
 
+// Utility function to decode HTML entities
+const decodeHtmlEntities = (text: string): string => {
+  if (!text) return text
+  
+  return text
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#x60;/g, '`')
+    .replace(/&#x3D;/g, '=')
+}
+
 interface BidItModalProps {
   isOpen: boolean
   onClose: () => void
@@ -33,6 +49,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
   productTitle = 'Product',
   productPrice = 0
 }) => {
+  // Decode HTML entities in product title
+  const decodedProductTitle = decodeHtmlEntities(productTitle)
   const [currentStep, setCurrentStep] = useState<BidStep>('product-info')
   const [product, setProduct] = useState<Product | null>(null)
   const [bidAmount, setBidAmount] = useState<string>('')
@@ -57,7 +75,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
         // Use a smaller number for bid_session_id to avoid integer overflow
         setBidSessionId(Math.floor(Math.random() * 1000000))
         logEvent('modal_opened', { shopifyProductId })
-        track('bidit_modal_opened', { productId: shopifyProductId, productTitle })
+        track('bidit_modal_opened', { productId: shopifyProductId, productTitle: decodedProductTitle })
         
         // Check if user is already logged in
         const storedUserId = localStorage.getItem('bidit_user_id')
@@ -317,7 +335,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
       logEvent('bid_submitted', { bidId: bidData.id, amount })
       track('bidit_bid_submitted', { 
         productId: shopifyProductId, 
-        productTitle, 
+        productTitle: decodedProductTitle, 
         bidAmount: amount, 
         productPrice 
       })
@@ -339,7 +357,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
       logEvent('bid_evaluated', { bidId: bidData.id, accepted: isAccepted })
       track('bidit_bid_evaluated', { 
         productId: shopifyProductId, 
-        productTitle, 
+        productTitle: decodedProductTitle, 
         bidAmount: amount, 
         productPrice, 
         accepted: isAccepted 
@@ -437,7 +455,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     
     track('bidit_modal_closed', { 
       productId: shopifyProductId, 
-      productTitle, 
+      productTitle: decodedProductTitle, 
       step: currentStep,
       timeSpentSeconds: Math.round(timeSpent / 1000)
     })
@@ -447,10 +465,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
   }
 
   const handleAddToCart = () => {
-    logEvent('add_to_cart_clicked', { bidAmount, productTitle, productPrice })
+    logEvent('add_to_cart_clicked', { bidAmount, productTitle: decodedProductTitle, productPrice })
     track('bidit_add_to_cart', { 
       productId: shopifyProductId, 
-      productTitle, 
+      productTitle: decodedProductTitle, 
       bidAmount, 
       productPrice 
     })
@@ -461,15 +479,15 @@ const BidItModal: React.FC<BidItModalProps> = ({
     logEvent('continue_shopping_clicked', { step: currentStep })
     track('bidit_continue_shopping', { 
       productId: shopifyProductId, 
-      productTitle, 
+      productTitle: decodedProductTitle, 
       step: currentStep 
     })
     handleClose()
   }
 
   const handleStartBidding = () => {
-    logEvent('start_bidding_clicked', { productTitle, productPrice })
-    track('bidit_start_bidding', { productId: shopifyProductId, productTitle, productPrice })
+    logEvent('start_bidding_clicked', { productTitle: decodedProductTitle, productPrice })
+    track('bidit_start_bidding', { productId: shopifyProductId, productTitle: decodedProductTitle, productPrice })
     trackStepTiming('login')
     setCurrentStep('login')
   }
@@ -538,7 +556,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       // Log successful login
       logEvent('login_successful', { email, userId }, Date.now() - stepStartTime)
-      track('bidit_login_successful', { productId: shopifyProductId, productTitle })
+      track('bidit_login_successful', { productId: shopifyProductId, productTitle: decodedProductTitle })
 
       // Move to first bid step
       trackStepTiming('first-bid')
@@ -755,7 +773,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
             {/* Product details */}
             <div className="text-center space-y-3">
-              <h3 className="text-lg font-medium text-gray-900">{productTitle}</h3>
+              <h3 className="text-lg font-medium text-gray-900">{decodedProductTitle}</h3>
               <div className="text-4xl font-bold text-orange-500">
                 ${productPrice.toFixed(2)}
               </div>
@@ -795,7 +813,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
             {/* Product details */}
             <div className="text-center space-y-3">
-              <h3 className="text-lg font-bold text-gray-900">{productTitle}</h3>
+              <h3 className="text-lg font-bold text-gray-900">{decodedProductTitle}</h3>
               <div className="text-4xl font-bold text-orange-500">
                 ${productPrice.toFixed(2)}
               </div>

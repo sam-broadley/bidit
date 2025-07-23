@@ -4,6 +4,22 @@ import { Button } from '@/components/ui/button'
 import { ShoppingBag, DollarSign } from 'lucide-react'
 import { track } from '@vercel/analytics'
 
+// Utility function to decode HTML entities
+const decodeHtmlEntities = (text: string): string => {
+  if (!text) return text
+  
+  return text
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#x60;/g, '`')
+    .replace(/&#x3D;/g, '=')
+}
+
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -11,7 +27,7 @@ export default function HomePage() {
     setIsModalOpen(true)
     track('bidit_demo_opened', { 
       productId: sampleProduct.id, 
-      productTitle: sampleProduct.title, 
+      productTitle: decodeHtmlEntities(sampleProduct.title), 
       productPrice: sampleProduct.price 
     })
   }
@@ -44,7 +60,7 @@ export default function HomePage() {
               </svg>
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              {sampleProduct.title}
+              {decodeHtmlEntities(sampleProduct.title)}
             </h2>
             <div className="flex items-center justify-center gap-1 text-2xl font-bold text-green-600">
               <DollarSign className="w-6 h-6" />
@@ -134,7 +150,7 @@ export default function HomePage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         shopifyProductId={sampleProduct.id}
-        productTitle={sampleProduct.title}
+        productTitle={decodeHtmlEntities(sampleProduct.title)}
         productPrice={sampleProduct.price}
       />
     </div>
