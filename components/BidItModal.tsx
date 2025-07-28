@@ -26,6 +26,28 @@ interface BidQuality {
   position: number // 0-100 for position on the bar
 }
 
+// Cookie utility functions
+const setCookie = (name: string, value: string, days: number = 365) => {
+  const expires = new Date()
+  expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000))
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`
+}
+
+const getCookie = (name: string): string | null => {
+  const nameEQ = name + "="
+  const ca = document.cookie.split(';')
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i]
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length)
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length)
+  }
+  return null
+}
+
+const deleteCookie = (name: string) => {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+}
+
 const BidItModal: React.FC<BidItModalProps> = ({
   isOpen,
   onClose,
@@ -54,6 +76,19 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [emailError, setEmailError] = useState<string | null>(null)
   const [counterOffer, setCounterOffer] = useState<number | null>(null)
 
+  // Load user data from cookies on component mount
+  useEffect(() => {
+    if (isOpen) {
+      const storedFirstName = getCookie('bidit_first_name')
+      const storedLastName = getCookie('bidit_last_name')
+      const storedEmail = getCookie('bidit_email')
+      
+      if (storedFirstName) setFirstName(storedFirstName)
+      if (storedLastName) setLastName(storedLastName)
+      if (storedEmail) setEmail(storedEmail)
+    }
+  }, [isOpen])
+
   // Generate bid session ID on component mount
   useEffect(() => {
     const initializeModal = async () => {
@@ -67,6 +102,17 @@ const BidItModal: React.FC<BidItModalProps> = ({
         const storedUserId = localStorage.getItem('bidit_user_id')
         const storedEmail = localStorage.getItem('bidit_user_email')
         
+        // Always show login step, but pre-fill with stored data
+        // Load user data from cookies for form pre-filling
+        const cookieFirstName = getCookie('bidit_first_name')
+        const cookieLastName = getCookie('bidit_last_name')
+        const cookieEmail = getCookie('bidit_email')
+        
+        if (cookieFirstName) setFirstName(cookieFirstName)
+        if (cookieLastName) setLastName(cookieLastName)
+        if (cookieEmail) setEmail(cookieEmail)
+        
+        // Check if user is already logged in and set current step accordingly
         if (storedUserId && storedEmail) {
           // Verify user still exists in database
           try {
@@ -78,24 +124,17 @@ const BidItModal: React.FC<BidItModalProps> = ({
               .single()
 
             if (!error && user) {
-              // User exists, skip to first bid
-              console.log('Auto-login successful for user:', storedUserId)
-              setCurrentStep('first-bid')
+              // User exists, but we'll still show login step with pre-filled data
+              console.log('User found in database, showing login with pre-filled data')
             } else {
-              // User doesn't exist in database, clear localStorage
-              console.log('User not found in database, clearing localStorage')
-              localStorage.removeItem('bidit_user_id')
-              localStorage.removeItem('bidit_user_email')
-              localStorage.removeItem('bidit_user_first_name')
-              localStorage.removeItem('bidit_user_last_name')
+              // User doesn't exist in database, clear all user data
+              console.log('User not found in database, clearing all user data')
+              clearAllUserData()
             }
           } catch (err) {
             console.warn('Error checking user existence:', err)
-            // Clear localStorage on error
-            localStorage.removeItem('bidit_user_id')
-            localStorage.removeItem('bidit_user_email')
-            localStorage.removeItem('bidit_user_first_name')
-            localStorage.removeItem('bidit_user_last_name')
+            // Clear all user data on error
+            clearAllUserData()
           }
         }
       }
@@ -496,6 +535,23 @@ const BidItModal: React.FC<BidItModalProps> = ({
     localStorage.removeItem('bidit_user_email')
     localStorage.removeItem('bidit_user_first_name')
     localStorage.removeItem('bidit_user_last_name')
+    // Note: We don't clear cookies here to preserve user data for next session
+  }
+
+  const clearAllUserData = () => {
+    // Clear user data from localStorage
+    localStorage.removeItem('bidit_user_id')
+    localStorage.removeItem('bidit_user_email')
+    localStorage.removeItem('bidit_user_first_name')
+    localStorage.removeItem('bidit_user_last_name')
+    // Clear user data from cookies
+    deleteCookie('bidit_first_name')
+    deleteCookie('bidit_last_name')
+    deleteCookie('bidit_email')
+    // Reset form fields
+    setFirstName('')
+    setLastName('')
+    setEmail('')
   }
 
   const handleClose = () => {
@@ -657,6 +713,11 @@ const BidItModal: React.FC<BidItModalProps> = ({
       localStorage.setItem('bidit_user_email', email)
       localStorage.setItem('bidit_user_first_name', firstName)
       localStorage.setItem('bidit_user_last_name', lastName)
+
+      // Store user info in cookies for form pre-filling
+      setCookie('bidit_first_name', firstName)
+      setCookie('bidit_last_name', lastName)
+      setCookie('bidit_email', email)
 
       // Log successful login
       logEvent('login_successful', { email, userId }, Date.now() - stepStartTime)
