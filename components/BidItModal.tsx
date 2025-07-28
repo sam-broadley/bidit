@@ -26,26 +26,74 @@ interface BidQuality {
   position: number // 0-100 for position on the bar
 }
 
-// Cookie utility functions
-const setCookie = (name: string, value: string, days: number = 365) => {
-  const expires = new Date()
-  expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000))
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`
-}
-
-const getCookie = (name: string): string | null => {
-  const nameEQ = name + "="
-  const ca = document.cookie.split(';')
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i]
-    while (c.charAt(0) === ' ') c = c.substring(1, c.length)
-    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length)
+// Enhanced storage utility functions with fallbacks
+const setUserData = (name: string, value: string) => {
+  try {
+    // Try to set cookie first (works for same-domain)
+    const expires = new Date()
+    expires.setTime(expires.getTime() + (365 * 24 * 60 * 60 * 1000))
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`
+    
+    // Also store in localStorage as backup
+    localStorage.setItem(name, value)
+  } catch (error) {
+    console.warn('Cookie storage failed, using localStorage only:', error)
+    // Fallback to localStorage only
+    localStorage.setItem(name, value)
   }
-  return null
 }
 
-const deleteCookie = (name: string) => {
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+const getUserData = (name: string): string | null => {
+  try {
+    // Try to get from cookie first
+    const nameEQ = name + "="
+    const ca = document.cookie.split(';')
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i]
+      while (c.charAt(0) === ' ') c = c.substring(1, c.length)
+      if (c.indexOf(nameEQ) === 0) {
+        const cookieValue = c.substring(nameEQ.length, c.length)
+        // Also update localStorage to keep them in sync
+        localStorage.setItem(name, cookieValue)
+        return cookieValue
+      }
+    }
+    
+    // Fallback to localStorage
+    const localStorageValue = localStorage.getItem(name)
+    if (localStorageValue) {
+      // Try to sync back to cookie
+      try {
+        const expires = new Date()
+        expires.setTime(expires.getTime() + (365 * 24 * 60 * 60 * 1000))
+        document.cookie = `${name}=${localStorageValue};expires=${expires.toUTCString()};path=/;SameSite=Lax`
+      } catch (error) {
+        console.warn('Failed to sync localStorage to cookie:', error)
+      }
+      return localStorageValue
+    }
+    
+    return null
+  } catch (error) {
+    console.warn('Cookie read failed, trying localStorage:', error)
+    return localStorage.getItem(name)
+  }
+}
+
+const deleteUserData = (name: string) => {
+  try {
+    // Clear from cookie
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+  } catch (error) {
+    console.warn('Failed to delete cookie:', error)
+  }
+  
+  try {
+    // Clear from localStorage
+    localStorage.removeItem(name)
+  } catch (error) {
+    console.warn('Failed to delete localStorage:', error)
+  }
 }
 
 const BidItModal: React.FC<BidItModalProps> = ({
@@ -75,19 +123,49 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
   const [counterOffer, setCounterOffer] = useState<number | null>(null)
+  const [counterTimer, setCounterTimer] = useState<number>(30)
+  const [counterTimerActive, setCounterTimerActive] = useState<boolean>(false)
 
-  // Load user data from cookies on component mount
+  // Load user data from storage on component mount
   useEffect(() => {
     if (isOpen) {
-      const storedFirstName = getCookie('bidit_first_name')
-      const storedLastName = getCookie('bidit_last_name')
-      const storedEmail = getCookie('bidit_email')
+      const storedFirstName = getUserData('bidit_first_name')
+      const storedLastName = getUserData('bidit_last_name')
+      const storedEmail = getUserData('bidit_email')
       
       if (storedFirstName) setFirstName(storedFirstName)
       if (storedLastName) setLastName(storedLastName)
       if (storedEmail) setEmail(storedEmail)
     }
   }, [isOpen])
+
+  // Counter timer countdown
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+    
+    if (currentStep === 'counter-bid' && counterTimerActive && counterTimer > 0) {
+      interval = setInterval(() => {
+        setCounterTimer(prev => {
+          if (prev <= 1) {
+            // Timer expired, close the modal
+            logEvent('counter_timer_expired', { counterOffer })
+            track('bidit_counter_timer_expired', { 
+              productId: shopifyProductId, 
+              productTitle: decodedProductTitle, 
+              counterOffer 
+            })
+            handleClose()
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [currentStep, counterTimerActive, counterTimer])
 
   // Generate bid session ID on component mount
   useEffect(() => {
@@ -100,27 +178,27 @@ const BidItModal: React.FC<BidItModalProps> = ({
         
         // Check if user is already logged in
         const storedUserId = localStorage.getItem('bidit_user_id')
-        const storedEmail = localStorage.getItem('bidit_user_email')
+        const storedUserEmail = localStorage.getItem('bidit_user_email')
         
         // Always show login step, but pre-fill with stored data
-        // Load user data from cookies for form pre-filling
-        const cookieFirstName = getCookie('bidit_first_name')
-        const cookieLastName = getCookie('bidit_last_name')
-        const cookieEmail = getCookie('bidit_email')
+        // Load user data from storage for form pre-filling
+        const storedFirstName = getUserData('bidit_first_name')
+        const storedLastName = getUserData('bidit_last_name')
+        const storedFormEmail = getUserData('bidit_email')
         
-        if (cookieFirstName) setFirstName(cookieFirstName)
-        if (cookieLastName) setLastName(cookieLastName)
-        if (cookieEmail) setEmail(cookieEmail)
+        if (storedFirstName) setFirstName(storedFirstName)
+        if (storedLastName) setLastName(storedLastName)
+        if (storedFormEmail) setEmail(storedFormEmail)
         
         // Check if user is already logged in and set current step accordingly
-        if (storedUserId && storedEmail) {
+        if (storedUserId && storedUserEmail) {
           // Verify user still exists in database
           try {
             const { data: user, error } = await supabase
               .from('users')
               .select('id')
               .eq('id', storedUserId)
-              .eq('email', storedEmail)
+              .eq('email', storedUserEmail)
               .single()
 
             if (!error && user) {
@@ -456,6 +534,9 @@ const BidItModal: React.FC<BidItModalProps> = ({
         // Counter-bid is shown after 2 failed bids
         trackStepTiming('counter-bid')
         setCurrentStep('counter-bid')
+        // Start the 30-second timer for counter-bid
+        setCounterTimer(30)
+        setCounterTimerActive(true)
       } else {
         // Bid was rejected - reduce remaining bids
         setBidsRemaining(prev => prev - 1)
@@ -524,6 +605,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
     setEmailError(null)
     setCurrentBidId(null)
     setCounterOffer(null)
+    setCounterTimer(30)
+    setCounterTimerActive(false)
     setStepStartTime(Date.now())
     setStepTimings({})
     setRealtimeEvents([])
@@ -544,10 +627,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
     localStorage.removeItem('bidit_user_email')
     localStorage.removeItem('bidit_user_first_name')
     localStorage.removeItem('bidit_user_last_name')
-    // Clear user data from cookies
-    deleteCookie('bidit_first_name')
-    deleteCookie('bidit_last_name')
-    deleteCookie('bidit_email')
+    // Clear user data from storage
+    deleteUserData('bidit_first_name')
+    deleteUserData('bidit_last_name')
+    deleteUserData('bidit_email')
     // Reset form fields
     setFirstName('')
     setLastName('')
@@ -588,6 +671,11 @@ const BidItModal: React.FC<BidItModalProps> = ({
   }
 
   const handleContinueShopping = () => {
+    // Stop the timer if we're on counter-bid step
+    if (currentStep === 'counter-bid') {
+      setCounterTimerActive(false)
+    }
+
     logEvent('continue_shopping_clicked', { step: currentStep })
     track('bidit_continue_shopping', { 
       productId: shopifyProductId, 
@@ -599,6 +687,9 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
   const handleAcceptCounterOffer = async () => {
     if (!currentBidId || !counterOffer) return
+
+    // Stop the timer
+    setCounterTimerActive(false)
 
     try {
       // Update bid status to accepted with counter offer
@@ -627,6 +718,9 @@ const BidItModal: React.FC<BidItModalProps> = ({
   }
 
   const handleRejectCounterOffer = () => {
+    // Stop the timer
+    setCounterTimerActive(false)
+
     logEvent('counter_offer_rejected', { bidId: currentBidId, counterOffer })
     track('bidit_counter_offer_rejected', { 
       productId: shopifyProductId, 
@@ -714,10 +808,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
       localStorage.setItem('bidit_user_first_name', firstName)
       localStorage.setItem('bidit_user_last_name', lastName)
 
-      // Store user info in cookies for form pre-filling
-      setCookie('bidit_first_name', firstName)
-      setCookie('bidit_last_name', lastName)
-      setCookie('bidit_email', email)
+      // Store user info in storage for form pre-filling
+      setUserData('bidit_first_name', firstName)
+      setUserData('bidit_last_name', lastName)
+      setUserData('bidit_email', email)
 
       // Log successful login
       logEvent('login_successful', { email, userId }, Date.now() - stepStartTime)
@@ -1060,6 +1154,18 @@ const BidItModal: React.FC<BidItModalProps> = ({
             </div>
 
             <div className="space-y-6">
+              {/* Timer Display */}
+              <div className="text-center">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium text-red-700">
+                      Time remaining: {counterTimer}s
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Failure Message with Previous Bid */}
               <div className="text-center">
                 <div className="flex justify-center mb-4">
