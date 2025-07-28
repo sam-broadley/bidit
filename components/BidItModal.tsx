@@ -272,6 +272,9 @@ const BidItModal: React.FC<BidItModalProps> = ({
   useEffect(() => {
     if (isOpen && shopifyProductId) {
       fetchProduct()
+    } else if (isOpen && !shopifyProductId) {
+      // Handle case when no productId is provided - use props data
+      console.log('No productId provided, using props data:', { productTitle, productPrice })
     }
   }, [isOpen, shopifyProductId])
 
@@ -444,7 +447,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
   }
 
   const submitBid = async () => {
-    if (!product || !bidAmount || !bidSessionId) return
+    if (!bidAmount || !bidSessionId) return
 
     const amount = parseFloat(bidAmount)
     if (isNaN(amount) || amount <= 0) {
@@ -462,13 +465,13 @@ const BidItModal: React.FC<BidItModalProps> = ({
     console.log('Submitting bid with user ID:', currentUserId, 'from localStorage:', storedUserId)
 
     try {
-      // Insert bid
+      // Insert bid - handle case where product is null (no productId provided)
       const { data: bidData, error: bidError } = await supabase
         .from('bids')
         .insert({
           bid_session_id: bidSessionId,
           user_id: currentUserId,
-          product_id: product.id,
+          product_id: product?.id || null,
           shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null,
           amount: amount,
           status: 'pending'
@@ -488,16 +491,18 @@ const BidItModal: React.FC<BidItModalProps> = ({
       })
 
       // Simulate bid evaluation (in real app, this would be an edge function)
-      const discountPercent = ((product.price - amount) / product.price) * 100
+      // Use product data if available, otherwise use props data
+      const effectivePrice = product?.price || productPrice
+      const discountPercent = product ? ((product.price - amount) / product.price) * 100 : 0
       
       // Accept bids that are at or above the product price, or within the acceptable discount range
-      const isAccepted = amount >= product.price || (discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent)
+      const isAccepted = amount >= effectivePrice || (product && discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent)
       
       let bidStatus = isAccepted ? 'accepted' : 'rejected'
       let counterOfferAmount = null
       
       // Counter-bid is ONLY available after 2 failed bids (when bidsRemaining = 0)
-      const shouldCounterBid = product.counter_bid && !isAccepted && bidsRemaining <= 1
+      const shouldCounterBid = product?.counter_bid && !isAccepted && bidsRemaining <= 1
       
       // If counter-bid is enabled and this is the last bid, calculate counter-offer
       if (shouldCounterBid) {
