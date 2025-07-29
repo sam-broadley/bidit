@@ -93,7 +93,17 @@
     iframe.src = `${settings.modalUrl}/modal?${qs}`;
     iframe.id  = 'bidit-modal-iframe';
 
-    if (settings.modalStyle === 'dropdown' && triggerBtn) {
+    // Check if we're in cart mode (productId is null/empty and we're in a container)
+    const isCartMode = !settings.productId && settings.modalContainer !== 'body';
+    
+    if (isCartMode) {
+      /* cart mode - smaller, inline styling */
+      iframe.style.cssText = `
+        position:relative;width:100%;height:600px;border:none;
+        border-radius:12px;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.1);
+        margin-top:16px;
+      `;
+    } else if (settings.modalStyle === 'dropdown' && triggerBtn) {
       /* dropdown positioning */
       const { w, h }   = getModalDims();
       const btnRect    = triggerBtn.getBoundingClientRect();
@@ -134,6 +144,9 @@
   function openModal(btn) {
     if (document.getElementById('bidit-modal-iframe')) return; // already open
     
+    // Check if we're in cart mode
+    const isCartMode = !settings.productId && settings.modalContainer !== 'body';
+    
     // Get the container element
     const containerSelector = settings.modalContainer;
     const modalRoot = document.querySelector(containerSelector);
@@ -145,7 +158,10 @@
       modalRoot.appendChild(createModal(btn));
     }
     
-    if (settings.modalStyle === 'fullscreen') document.body.style.overflow = 'hidden';
+    // Only hide body overflow for fullscreen mode, not cart mode
+    if (settings.modalStyle === 'fullscreen' && !isCartMode) {
+      document.body.style.overflow = 'hidden';
+    }
   }
 
   function closeModal() {
