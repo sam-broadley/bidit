@@ -580,8 +580,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
       let counterOfferAmount = null
       
       // Counter-bid is ONLY available after 2 failed bids (when bidsRemaining = 0)
-      // Use override if provided, otherwise check product settings or cart mode
-      const shouldCounterBid = (counterBidOverride || product?.counter_bid || isCartMode) && !isAccepted && bidsRemaining <= 1
+      // Use override if provided, otherwise check product settings (but NOT cart mode)
+      const shouldCounterBid = (counterBidOverride || product?.counter_bid) && !isAccepted && bidsRemaining <= 1
       
       // If counter-bid is enabled and this is the last bid, calculate counter-offer
       if (shouldCounterBid) {
