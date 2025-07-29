@@ -64,12 +64,14 @@
       else if (inp?.value) currentVariantId = inp.value;
     }
 
-    // Price element
-    const priceEl = document.querySelector('.price, .product-price, [data-price]');
-    if (priceEl) {
-      const raw = priceEl.textContent || priceEl.getAttribute('data-price') || '';
-      const m = raw.match(/[\d,]+\.?\d*/);
-      if (m) currentPrice = parseFloat(m[0].replace(/,/g, ''));
+    // Price element – only run when we’re on a product page
+    if (settings.productId) {
+      const priceEl = document.querySelector('.price, .product-price, [data-price]');
+      if (priceEl) {
+        const raw = priceEl.textContent || priceEl.getAttribute('data-price') || '';
+        const m   = raw.match(/[\d,]+\.?\d*/);
+        if (m) currentPrice = parseFloat(m[0].replace(/,/g, ''));
+      }
     }
 
     return { currentVariantId, currentPrice };
