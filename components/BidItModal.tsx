@@ -154,7 +154,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
             // Timer expired, close the modal
             logEvent('counter_timer_expired', { counterOffer })
             track('bidit_counter_timer_expired', { 
-              productId: shopifyProductId, 
+              productId: shopifyProductId || 'cart', 
               productTitle: decodedProductTitle, 
               counterOffer 
             })
@@ -666,7 +666,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     }, timeSpent) // Pass timeSpent to the dedicated column
     
     track('bidit_modal_closed', { 
-      productId: shopifyProductId, 
+      productId: shopifyProductId || 'cart', 
       productTitle: decodedProductTitle, 
       step: currentStep,
       timeSpentSeconds: Math.round(timeSpent / 1000)
@@ -679,7 +679,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const handleAddToCart = () => {
     logEvent('add_to_cart_clicked', { bidAmount, productTitle: decodedProductTitle, productPrice })
     track('bidit_add_to_cart', { 
-      productId: shopifyProductId, 
+      productId: shopifyProductId || 'cart', 
       productTitle: decodedProductTitle, 
       bidAmount, 
       productPrice 
@@ -695,7 +695,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
     logEvent('continue_shopping_clicked', { step: currentStep })
     track('bidit_continue_shopping', { 
-      productId: shopifyProductId, 
+      productId: shopifyProductId || 'cart', 
       productTitle: decodedProductTitle, 
       step: currentStep 
     })
@@ -720,7 +720,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       logEvent('counter_offer_accepted', { bidId: currentBidId, counterOffer })
       track('bidit_counter_offer_accepted', { 
-        productId: shopifyProductId, 
+        productId: shopifyProductId || 'cart', 
         productTitle: decodedProductTitle, 
         originalBid: bidAmount,
         counterOffer 
@@ -740,7 +740,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
     logEvent('counter_offer_rejected', { bidId: currentBidId, counterOffer })
     track('bidit_counter_offer_rejected', { 
-      productId: shopifyProductId, 
+      productId: shopifyProductId || 'cart', 
       productTitle: decodedProductTitle, 
       originalBid: bidAmount,
       counterOffer 
@@ -758,7 +758,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
   const handleStartBidding = () => {
     logEvent('start_bidding_clicked', { productTitle: decodedProductTitle, productPrice })
-    track('bidit_start_bidding', { productId: shopifyProductId, productTitle: decodedProductTitle, productPrice })
+    track('bidit_start_bidding', { productId: shopifyProductId || 'cart', productTitle: decodedProductTitle, productPrice })
     trackStepTiming('login')
     setCurrentStep('login')
   }
@@ -832,7 +832,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       // Log successful login
       logEvent('login_successful', { email, userId }, Date.now() - stepStartTime)
-      track('bidit_login_successful', { productId: shopifyProductId, productTitle: decodedProductTitle })
+      track('bidit_login_successful', { productId: shopifyProductId || 'cart', productTitle: decodedProductTitle })
 
       // Move to first bid step
       trackStepTiming('first-bid')
