@@ -11,7 +11,7 @@ import { decodeHtmlEntities } from '@/lib/utils'
 interface BidItModalProps {
   isOpen: boolean
   onClose: () => void
-  shopifyProductId: string
+  shopifyProductId?: string
   shopifyVariantId?: string
   productTitle?: string
   productPrice?: number
@@ -106,6 +106,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
 }) => {
   // Decode HTML entities in product title
   const decodedProductTitle = decodeHtmlEntities(productTitle)
+  
+  // Check if this is cart mode (no productId provided)
+  const isCartMode = !shopifyProductId
+  
   const [currentStep, setCurrentStep] = useState<BidStep>('product-info')
   const [product, setProduct] = useState<Product | null>(null)
   const [bidAmount, setBidAmount] = useState<string>('')
@@ -173,8 +177,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
       if (isOpen && !bidSessionId) {
         // Use a smaller number for bid_session_id to avoid integer overflow
         setBidSessionId(Math.floor(Math.random() * 1000000))
-        logEvent('modal_opened', { shopifyProductId })
-        track('bidit_modal_opened', { productId: shopifyProductId, productTitle: decodedProductTitle })
+        logEvent('modal_opened', { shopifyProductId: shopifyProductId || 'cart' })
+        track('bidit_modal_opened', { productId: shopifyProductId || 'cart', productTitle: decodedProductTitle })
         
         // Check if user is already logged in
         const storedUserId = localStorage.getItem('bidit_user_id')
@@ -270,15 +274,20 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
   // Fetch product data when modal opens
   useEffect(() => {
-    if (isOpen && shopifyProductId) {
+    if (isOpen && shopifyProductId && !isCartMode) {
       fetchProduct()
-    } else if (isOpen && !shopifyProductId) {
-      // Handle case when no productId is provided - use props data
-      console.log('No productId provided, using props data:', { productTitle, productPrice })
+    } else if (isOpen && isCartMode) {
+      // Handle cart mode - no product fetching needed
+      console.log('Cart mode detected, skipping product fetch')
     }
-  }, [isOpen, shopifyProductId])
+  }, [isOpen, shopifyProductId, isCartMode])
 
   const fetchProduct = async () => {
+    // Skip product fetching in cart mode
+    if (isCartMode) {
+      return
+    }
+    
     try {
       const { data, error } = await supabase
         .from('products')
@@ -291,7 +300,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
       logEvent('product_fetched', { productId: data.id })
     } catch (err) {
       console.error('Error fetching product:', err)
-      setError('Failed to load product information')
+      // Only show error in product mode, not cart mode
+      if (!isCartMode) {
+        setError('Failed to load product information')
+      }
     }
   }
 
@@ -484,7 +496,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
       setCurrentBidId(bidData.id)
       logEvent('bid_submitted', { bidId: bidData.id, amount })
       track('bidit_bid_submitted', { 
-        productId: shopifyProductId, 
+        productId: shopifyProductId || 'cart', 
         productTitle: decodedProductTitle, 
         bidAmount: amount, 
         productPrice 
@@ -523,7 +535,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
 
       logEvent('bid_evaluated', { bidId: bidData.id, accepted: isAccepted, countered: bidStatus === 'countered' })
       track('bidit_bid_evaluated', { 
-        productId: shopifyProductId, 
+        productId: shopifyProductId || 'cart', 
         productTitle: decodedProductTitle, 
         bidAmount: amount, 
         productPrice, 
@@ -1013,14 +1025,16 @@ const BidItModal: React.FC<BidItModalProps> = ({
       case 'product-info':
         return (
           <div className="flex flex-col justify-between h-full">
-            {/* BidIt Logo */}
-            <div className="text-center">
-              <img 
-                src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
-                alt="BidIt" 
-                className="h-8 mx-auto"
-              />
-            </div>
+            {/* BidIt Logo - only show if not cart mode */}
+            {!isCartMode && (
+              <div className="text-center">
+                <img 
+                  src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                  alt="BidIt" 
+                  className="h-8 mx-auto"
+                />
+              </div>
+            )}
 
              {/* How BidIt works info box */}
              <div className="bg-gray-100 p-4 rounded-xl">
@@ -1030,14 +1044,19 @@ const BidItModal: React.FC<BidItModalProps> = ({
                   <h3 className="font-bold text-gray-900">How Bidit Works</h3>
                 </div>
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  You're bidding against the merchant, not other customers. Offer what you're willing to pay - if accepted, you can buy at that price!
+                  {isCartMode 
+                    ? "You're bidding against the merchant, not other customers. Offer what you're willing to pay - if accepted, you can checkout at that price!"
+                    : "You're bidding against the merchant, not other customers. Offer what you're willing to pay - if accepted, you can buy at that price!"
+                  }
                 </p>
               </div>
             </div>
 
-            {/* Product details */}
+            {/* Product/Cart details */}
             <div className="text-center space-y-3">
-              <h3 className="text-lg font-medium text-gray-900">{decodedProductTitle}</h3>
+              <h3 className="text-lg font-medium text-gray-900">
+                {isCartMode ? 'Your Cart' : decodedProductTitle}
+              </h3>
               <div className="text-4xl font-bold text-orange-500">
                 ${productPrice.toFixed(2)}
               </div>
@@ -1066,18 +1085,22 @@ const BidItModal: React.FC<BidItModalProps> = ({
       case 'second-bid':
         return (
           <div className="flex flex-col justify-between h-full">
-            {/* BidIt Logo */}
-            <div className="text-center mb-6">
-              <img 
-                src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
-                alt="BidIt" 
-                className="h-8 mx-auto"
-              />
-            </div>
+            {/* BidIt Logo - only show if not cart mode */}
+            {!isCartMode && (
+              <div className="text-center mb-6">
+                <img 
+                  src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                  alt="BidIt" 
+                  className="h-8 mx-auto"
+                />
+              </div>
+            )}
 
-            {/* Product details */}
+            {/* Product/Cart details */}
             <div className="text-center space-y-3 mb-8">
-              <h3 className="text-lg font-bold text-gray-900">{decodedProductTitle}</h3>
+              <h3 className="text-lg font-bold text-gray-900">
+                {isCartMode ? 'Your Cart' : decodedProductTitle}
+              </h3>
               <div className="text-4xl font-bold text-orange-500">
                 ${productPrice.toFixed(2)}
               </div>
@@ -1147,14 +1170,16 @@ const BidItModal: React.FC<BidItModalProps> = ({
       case 'counter-bid':
         return (
           <div className="flex flex-col justify-between h-full">
-            {/* BidIt Logo */}
-            <div className="text-center mb-6">
-              <img 
-                src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
-                alt="BidIt" 
-                className="h-8 mx-auto"
-              />
-            </div>
+            {/* BidIt Logo - only show if not cart mode */}
+            {!isCartMode && (
+              <div className="text-center mb-6">
+                <img 
+                  src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                  alt="BidIt" 
+                  className="h-8 mx-auto"
+                />
+              </div>
+            )}
 
             {/* Main Content */}
             <div className="space-y-6">
@@ -1218,14 +1243,16 @@ const BidItModal: React.FC<BidItModalProps> = ({
       case 'success':
         return (
           <div className="flex flex-col justify-between h-full text-center">
-            {/* BidIt Logo */}
-            <div className="text-center mb-6">
-              <img 
-                src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
-                alt="BidIt" 
-                className="h-8 mx-auto"
-              />
-            </div>
+            {/* BidIt Logo - only show if not cart mode */}
+            {!isCartMode && (
+              <div className="text-center mb-6">
+                <img 
+                  src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                  alt="BidIt" 
+                  className="h-8 mx-auto"
+                />
+              </div>
+            )}
 
             {/* Success Content */}
             <div className="flex-1 flex flex-col justify-center space-y-6">
@@ -1251,7 +1278,10 @@ const BidItModal: React.FC<BidItModalProps> = ({
                     )}
                   </p>
                   <p className="text-sm text-gray-600">
-                    You can now purchase this item at the agreed price.
+                    {isCartMode 
+                      ? "You can now checkout at this new agreed price."
+                      : "You can now purchase this item at the agreed price."
+                    }
                   </p>
                 </div>
               </div>
@@ -1263,7 +1293,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
                 onClick={handleAddToCart} 
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-4 rounded-xl text-base shadow-lg"
               >
-                Add to Cart
+                {isCartMode ? 'Accept New Amount' : 'Add to Cart'}
               </Button>
               <Button 
                 onClick={handleContinueShopping} 
@@ -1278,14 +1308,16 @@ const BidItModal: React.FC<BidItModalProps> = ({
       case 'failure':
         return (
           <div className="flex flex-col justify-between h-full text-center">
-            {/* BidIt Logo */}
-            <div className="text-center mb-6">
-              <img 
-                src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
-                alt="BidIt" 
-                className="h-8 mx-auto"
-              />
-            </div>
+            {/* BidIt Logo - only show if not cart mode */}
+            {!isCartMode && (
+              <div className="text-center mb-6">
+                <img 
+                  src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                  alt="BidIt" 
+                  className="h-8 mx-auto"
+                />
+              </div>
+            )}
 
             {/* Failure Content */}
             <div className="flex-1 flex flex-col justify-center space-y-6">
