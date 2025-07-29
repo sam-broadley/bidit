@@ -15,6 +15,7 @@ interface BidItModalProps {
   shopifyVariantId?: string
   productTitle?: string
   productPrice?: number
+  cartId?: string
 }
 
 type BidStep = 'login' | 'product-info' | 'first-bid' | 'second-bid' | 'counter-bid' | 'success' | 'failure'
@@ -102,7 +103,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
   shopifyProductId,
   shopifyVariantId,
   productTitle = 'Product',
-  productPrice = 0
+  productPrice = 0,
+  cartId
 }) => {
   // Decode HTML entities in product title
   const decodedProductTitle = decodeHtmlEntities(productTitle)
@@ -393,6 +395,51 @@ const BidItModal: React.FC<BidItModalProps> = ({
   }
 
   const getBidQuality = (amount: number): BidQuality => {
+    // Handle cart mode - no product object available
+    if (isCartMode) {
+      const discountPercent = ((productPrice - amount) / productPrice) * 100
+      
+      // For cart mode, use a reasonable max discount of 30%
+      const maxDiscountPercent = 30
+      
+      // Calculate position based on acceptance likelihood (0-100%)
+      let position = 50 // default middle
+      
+      if (amount >= productPrice) {
+        // At or above cart total - guaranteed acceptance
+        position = 100
+        return { message: 'Guaranteed acceptance!', color: 'text-green-500', icon: <TrendingUp className="w-4 h-4" />, position }
+      }
+      
+      if (discountPercent <= maxDiscountPercent) {
+        // Within acceptable discount range
+        if (discountPercent <= 10) {
+          position = 95 - (discountPercent / 10) * 15
+        } else if (discountPercent <= 20) {
+          position = 80 - ((discountPercent - 10) / 10) * 20
+        } else {
+          position = 60 - ((discountPercent - 20) / 10) * 20
+        }
+      } else {
+        // Above max discount - rapid decline
+        position = Math.max(0, 40 - ((discountPercent - maxDiscountPercent) / 20) * 40)
+      }
+      
+      // Determine message and color based on position
+      if (position >= 80) {
+        return { message: 'Excellent offer!', color: 'text-green-500', icon: <TrendingUp className="w-4 h-4" />, position }
+      } else if (position >= 60) {
+        return { message: 'Looking good!', color: 'text-green-500', icon: <TrendingUp className="w-4 h-4" />, position }
+      } else if (position >= 40) {
+        return { message: 'Fair offer', color: 'text-yellow-500', icon: <TrendingUp className="w-4 h-4" />, position }
+      } else if (position >= 20) {
+        return { message: 'Try higher', color: 'text-orange-500', icon: <TrendingDown className="w-4 h-4" />, position }
+      } else {
+        return { message: 'Too low', color: 'text-red-500', icon: <TrendingDown className="w-4 h-4" />, position }
+      }
+    }
+    
+    // Product mode - use existing logic
     if (!product) return { message: 'Enter a bid', color: 'text-gray-500', icon: <Info className="w-4 h-4" />, position: 50 }
     
     const discountPercent = ((product.price - amount) / product.price) * 100
@@ -485,6 +532,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
           user_id: currentUserId,
           product_id: product?.id || null,
           shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null,
+          cart_id: cartId ? parseInt(cartId) : null,
           amount: amount,
           status: 'pending'
         })
@@ -505,16 +553,23 @@ const BidItModal: React.FC<BidItModalProps> = ({
       // Simulate bid evaluation (in real app, this would be an edge function)
       // Use product data if available, otherwise use props data
       const effectivePrice = product?.price || productPrice
-      const discountPercent = product ? ((product.price - amount) / product.price) * 100 : 0
+      const discountPercent = product ? ((product.price - amount) / product.price) * 100 : ((productPrice - amount) / productPrice) * 100
       
-      // Accept bids that are at or above the product price, or within the acceptable discount range
-      const isAccepted = amount >= effectivePrice || (product && discountPercent >= product.min_discount_percent && discountPercent <= product.max_discount_percent)
+      // Accept bids that are at or above the price, or within the acceptable discount range
+      let isAccepted = false
+      if (isCartMode) {
+        // Cart mode - use 30% max discount
+        isAccepted = amount >= effectivePrice || (discountPercent >= 0 && discountPercent <= 30)
+      } else {
+        // Product mode - use product-specific discount settings
+        isAccepted = amount >= effectivePrice || (!!product && discountPercent >= (product.min_discount_percent || 0) && discountPercent <= (product.max_discount_percent || 100))
+      }
       
       let bidStatus = isAccepted ? 'accepted' : 'rejected'
       let counterOfferAmount = null
       
       // Counter-bid is ONLY available after 2 failed bids (when bidsRemaining = 0)
-      const shouldCounterBid = product?.counter_bid && !isAccepted && bidsRemaining <= 1
+      const shouldCounterBid = (product?.counter_bid || isCartMode) && !isAccepted && bidsRemaining <= 1
       
       // If counter-bid is enabled and this is the last bid, calculate counter-offer
       if (shouldCounterBid) {

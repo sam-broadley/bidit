@@ -90,7 +90,8 @@
       `variantId=${encodeURIComponent(currentVariantId || '')}`,
       `title=${encodeURIComponent(settings.productTitle)}`,
       `price=${currentPrice}`,
-      `userId=${encodeURIComponent(settings.userId)}`
+      `userId=${encodeURIComponent(settings.userId)}`,
+      settings.cartId ? `cartId=${encodeURIComponent(settings.cartId)}` : null
     ].filter(Boolean); // Remove null/undefined values
     
     const qs = queryParams.join('&');
@@ -229,7 +230,8 @@
       `variantId=${encodeURIComponent(currentVariantId || '')}`,
       `title=${encodeURIComponent(settings.productTitle)}`,
       `price=${currentPrice}`,
-      `userId=${encodeURIComponent(settings.userId)}`
+      `userId=${encodeURIComponent(settings.userId)}`,
+      settings.cartId ? `cartId=${encodeURIComponent(settings.cartId)}` : null
     ].filter(Boolean); // Remove null/undefined values
     
     const newSrc = `${settings.modalUrl}/modal?${queryParams.join('&')}`;

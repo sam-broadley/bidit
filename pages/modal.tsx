@@ -10,12 +10,13 @@ export default function ModalPage() {
     shopifyProductId: '',
     shopifyVariantId: '',
     productTitle: '',
-    productPrice: 0
+    productPrice: 0,
+    cartId: ''
   })
 
   useEffect(() => {
     // Extract parameters from URL
-    const { productId, variantId, title, price } = router.query
+    const { productId, variantId, title, price, cartId } = router.query
     
     // Handle both product mode and cart mode
     if (productId && title && price) {
@@ -31,7 +32,8 @@ export default function ModalPage() {
         shopifyProductId: productId as string,
         shopifyVariantId: (variantId as string) || '',
         productTitle: decodedTitle,
-        productPrice: parseFloat(price as string)
+        productPrice: parseFloat(price as string),
+        cartId: (cartId as string) || ''
       }
       setModalConfig(config)
       setIsModalOpen(true)
@@ -56,7 +58,8 @@ export default function ModalPage() {
         shopifyProductId: '', // Empty for cart mode
         shopifyVariantId: '',
         productTitle: decodedTitle,
-        productPrice: parseFloat(price as string)
+        productPrice: parseFloat(price as string),
+        cartId: (cartId as string) || ''
       }
       setModalConfig(config)
       setIsModalOpen(true)
@@ -88,6 +91,7 @@ export default function ModalPage() {
         shopifyVariantId={modalConfig.shopifyVariantId}
         productTitle={modalConfig.productTitle}
         productPrice={modalConfig.productPrice}
+        cartId={modalConfig.cartId}
       />
     </div>
   )
