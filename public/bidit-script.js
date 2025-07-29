@@ -17,7 +17,8 @@
     userId: '',
     buttonSelector: '[data-bidit-button]',
     modalStyle: 'dropdown',   // or 'fullscreen'
-    borderRadius: '20px'
+    borderRadius: '20px',
+    modalContainer: 'body'    // container selector for modal
   };
   const settings = { ...defaults, ...themeCfg };
 
@@ -130,7 +131,18 @@
 
   function openModal(btn) {
     if (document.getElementById('bidit-modal-iframe')) return; // already open
-    document.body.appendChild(createModal(btn));
+    
+    // Get the container element
+    const containerSelector = settings.modalContainer;
+    const modalRoot = document.querySelector(containerSelector);
+    
+    if (!modalRoot) {
+      console.warn(`BidIt: Container selector "${containerSelector}" not found, falling back to body`);
+      document.body.appendChild(createModal(btn));
+    } else {
+      modalRoot.appendChild(createModal(btn));
+    }
+    
     if (settings.modalStyle === 'fullscreen') document.body.style.overflow = 'hidden';
   }
 
@@ -227,6 +239,15 @@
    * INIT
    * ------------------------------------------------------------ */
   function init() {
+    // Check for data-modal-container attribute on the script tag
+    const scriptTag = document.currentScript || document.querySelector('script[src*="bidit-script.js"]');
+    if (scriptTag) {
+      const containerSelector = scriptTag.getAttribute('data-modal-container');
+      if (containerSelector) {
+        settings.modalContainer = containerSelector;
+      }
+    }
+    
     const btns = document.querySelectorAll(settings.buttonSelector);
     btns.forEach(styleBidItBtn);
     if (btns.length === 0) autoInjectBtn();
