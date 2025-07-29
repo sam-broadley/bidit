@@ -16,6 +16,7 @@ interface BidItModalProps {
   productTitle?: string
   productPrice?: number
   cartId?: string
+  counterBidOverride?: boolean
 }
 
 type BidStep = 'login' | 'product-info' | 'first-bid' | 'second-bid' | 'counter-bid' | 'success' | 'failure'
@@ -104,7 +105,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
   shopifyVariantId,
   productTitle = 'Product',
   productPrice = 0,
-  cartId
+  cartId,
+  counterBidOverride = false
 }) => {
   // Decode HTML entities in product title
   const decodedProductTitle = decodeHtmlEntities(productTitle)
@@ -578,7 +580,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
       let counterOfferAmount = null
       
       // Counter-bid is ONLY available after 2 failed bids (when bidsRemaining = 0)
-      const shouldCounterBid = (product?.counter_bid || isCartMode) && !isAccepted && bidsRemaining <= 1
+      // Use override if provided, otherwise check product settings or cart mode
+      const shouldCounterBid = (counterBidOverride || product?.counter_bid || isCartMode) && !isAccepted && bidsRemaining <= 1
       
       // If counter-bid is enabled and this is the last bid, calculate counter-offer
       if (shouldCounterBid) {

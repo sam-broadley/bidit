@@ -18,7 +18,8 @@
     buttonSelector: '[data-bidit-button]',
     modalStyle: 'dropdown',   // or 'fullscreen'
     borderRadius: '20px',
-    modalContainer: 'body'    // container selector for modal
+    modalContainer: 'body',   // container selector for modal
+    counterBidOverride: false // force counter-bid functionality
   };
   const settings = { ...defaults, ...themeCfg };
 
@@ -91,7 +92,8 @@
       `title=${encodeURIComponent(settings.productTitle)}`,
       `price=${currentPrice}`,
       `userId=${encodeURIComponent(settings.userId)}`,
-      settings.cartId ? `cartId=${encodeURIComponent(settings.cartId)}` : null
+      settings.cartId ? `cartId=${encodeURIComponent(settings.cartId)}` : null,
+      settings.counterBidOverride ? `counterBidOverride=true` : null
     ].filter(Boolean); // Remove null/undefined values
     
     const qs = queryParams.join('&');
@@ -231,7 +233,8 @@
       `title=${encodeURIComponent(settings.productTitle)}`,
       `price=${currentPrice}`,
       `userId=${encodeURIComponent(settings.userId)}`,
-      settings.cartId ? `cartId=${encodeURIComponent(settings.cartId)}` : null
+      settings.cartId ? `cartId=${encodeURIComponent(settings.cartId)}` : null,
+      settings.counterBidOverride ? `counterBidOverride=true` : null
     ].filter(Boolean); // Remove null/undefined values
     
     const newSrc = `${settings.modalUrl}/modal?${queryParams.join('&')}`;
