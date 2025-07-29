@@ -17,8 +17,9 @@ export default function ModalPage() {
     // Extract parameters from URL
     const { productId, variantId, title, price } = router.query
     
+    // Handle both product mode and cart mode
     if (productId && title && price) {
-      // Decode the title to handle HTML entities like &#39;
+      // Product mode - decode the title to handle HTML entities like &#39;
       const decodedTitle = decodeURIComponent(title as string)
         .replace(/&#39;/g, "'")
         .replace(/&amp;/g, '&')
@@ -41,6 +42,31 @@ export default function ModalPage() {
         productTitle: config.productTitle,
         productPrice: config.productPrice,
         variantId: config.shopifyVariantId || null
+      })
+    } else if (title && price) {
+      // Cart mode - no productId provided
+      const decodedTitle = decodeURIComponent(title as string)
+        .replace(/&#39;/g, "'")
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+      
+      const config = {
+        shopifyProductId: '', // Empty for cart mode
+        shopifyVariantId: '',
+        productTitle: decodedTitle,
+        productPrice: parseFloat(price as string)
+      }
+      setModalConfig(config)
+      setIsModalOpen(true)
+      
+      // Track modal page load for cart mode
+      track('bidit_modal_page_loaded', {
+        productId: 'cart',
+        productTitle: config.productTitle,
+        productPrice: config.productPrice,
+        variantId: null
       })
     }
   }, [router.query])

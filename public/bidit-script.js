@@ -83,13 +83,17 @@
   function createModal(triggerBtn) {
     const iframe = document.createElement('iframe');
     const { currentVariantId, currentPrice } = getCurrentVariantInfo();
-    const qs = [
-      `productId=${encodeURIComponent(settings.productId)}`,
+    
+    // Build query string, omitting productId if it's null/empty for cart mode
+    const queryParams = [
+      settings.productId ? `productId=${encodeURIComponent(settings.productId)}` : null,
       `variantId=${encodeURIComponent(currentVariantId || '')}`,
       `title=${encodeURIComponent(settings.productTitle)}`,
       `price=${currentPrice}`,
       `userId=${encodeURIComponent(settings.userId)}`
-    ].join('&');
+    ].filter(Boolean); // Remove null/undefined values
+    
+    const qs = queryParams.join('&');
     iframe.src = `${settings.modalUrl}/modal?${qs}`;
     iframe.id  = 'bidit-modal-iframe';
 
@@ -218,12 +222,17 @@
     const iframe = document.getElementById('bidit-modal-iframe');
     if (!iframe) return;
     const { currentVariantId, currentPrice } = getCurrentVariantInfo();
-    const newSrc =
-      `${settings.modalUrl}/modal?productId=${encodeURIComponent(settings.productId)}` +
-      `&variantId=${encodeURIComponent(currentVariantId || '')}` +
-      `&title=${encodeURIComponent(settings.productTitle)}` +
-      `&price=${currentPrice}` +
-      `&userId=${encodeURIComponent(settings.userId)}`;
+    
+    // Build query string, omitting productId if it's null/empty for cart mode
+    const queryParams = [
+      settings.productId ? `productId=${encodeURIComponent(settings.productId)}` : null,
+      `variantId=${encodeURIComponent(currentVariantId || '')}`,
+      `title=${encodeURIComponent(settings.productTitle)}`,
+      `price=${currentPrice}`,
+      `userId=${encodeURIComponent(settings.userId)}`
+    ].filter(Boolean); // Remove null/undefined values
+    
+    const newSrc = `${settings.modalUrl}/modal?${queryParams.join('&')}`;
     iframe.src = newSrc;
   }
 
