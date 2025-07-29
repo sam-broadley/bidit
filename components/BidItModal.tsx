@@ -919,6 +919,24 @@ const BidItModal: React.FC<BidItModalProps> = ({
         logEvent('user_logged_in', { email, userId })
       }
 
+      // If in cart mode, associate the user with the cart
+      if (isCartMode && cartId && userId) {
+        console.log(`Attempting to update cart ${cartId} with user ID ${userId}`)
+        const { error: cartUpdateError } = await supabase
+          .from('carts')
+          .update({ user_id: userId })
+          .eq('id', parseInt(cartId))
+
+        if (cartUpdateError) {
+          console.error('Error updating cart with user_id:', cartUpdateError)
+          // Log this failure, but don't block the user from logging in
+          logEvent('cart_user_association_failed', { cartId, userId, error: cartUpdateError.message })
+        } else {
+          console.log(`Cart ${cartId} updated successfully with user ID ${userId}`)
+          logEvent('cart_user_associated', { cartId, userId })
+        }
+      }
+
       // Store user info in localStorage for persistence
       localStorage.setItem('bidit_user_id', userId.toString())
       localStorage.setItem('bidit_user_email', email)
