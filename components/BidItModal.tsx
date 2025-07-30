@@ -133,6 +133,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [counterOffer, setCounterOffer] = useState<number | null>(null)
   const [counterTimer, setCounterTimer] = useState<number>(30)
   const [counterTimerActive, setCounterTimerActive] = useState<boolean>(false)
+  const [showJourneyComplete, setShowJourneyComplete] = useState<boolean>(false)
 
   // Load user data from storage on component mount
   useEffect(() => {
@@ -697,6 +698,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     setCounterOffer(null)
     setCounterTimer(30)
     setCounterTimerActive(false)
+    setShowJourneyComplete(false)
     setStepStartTime(Date.now())
     setStepTimings({})
     setRealtimeEvents([])
@@ -765,7 +767,14 @@ const BidItModal: React.FC<BidItModalProps> = ({
       bidAmount, 
       productPrice 
     })
-    handleClose()
+    
+    // Show journey complete dialog
+    setShowJourneyComplete(true)
+    
+    // Close modal after a short delay
+    setTimeout(() => {
+      handleClose()
+    }, 2000)
   }
 
   const handleContinueShopping = () => {
@@ -784,7 +793,17 @@ const BidItModal: React.FC<BidItModalProps> = ({
       productTitle: decodedProductTitle, 
       step: currentStep 
     })
-    handleClose()
+    
+    // Show journey complete dialog for success steps
+    if (currentStep === 'success') {
+      setShowJourneyComplete(true)
+      // Close modal after a short delay
+      setTimeout(() => {
+        handleClose()
+      }, 2000)
+    } else {
+      handleClose()
+    }
   }
 
   const handleAcceptCounterOffer = async () => {
@@ -1485,7 +1504,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogPortal>
         <DialogOverlay className="bg-gray-200/80 backdrop-blur-sm" />
-        <DialogContent className="h-full w-full overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-8 sm:p-6">
+        <DialogContent className="h-full w-full overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-8 sm:p-6 relative">
           <DialogHeader className="sr-only">
             <DialogTitle>
               {currentStep === 'success' ? 'Bid Successful!' : 
@@ -1493,6 +1512,20 @@ const BidItModal: React.FC<BidItModalProps> = ({
                'BidIt - Make an Offer'}
             </DialogTitle>
           </DialogHeader>
+          
+          {/* Journey Complete Dialog Overlay */}
+          {showJourneyComplete && (
+            <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex items-center justify-center z-50 rounded-[20px]">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">Journey Complete ✅</h3>
+                <p className="text-gray-600">Thank you for using BidIt!</p>
+              </div>
+            </div>
+          )}
+          
           {renderStep()}
         </DialogContent>
       </DialogPortal>
