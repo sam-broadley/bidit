@@ -27,28 +27,7 @@ const DemoComplete: React.FC = () => {
           </p>
         </div>
 
-        {/* Additional Info */}
-        <div className="bg-gray-50 rounded-2xl p-6 mb-8">
-          <h3 className="font-semibold text-gray-900 mb-3">What you experienced:</h3>
-          <ul className="text-sm text-gray-600 space-y-2 text-left">
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">•</span>
-              <span>Interactive bidding interface</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">•</span>
-              <span>Real-time bid quality feedback</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">•</span>
-              <span>Counter-offer functionality</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">•</span>
-              <span>Seamless user journey tracking</span>
-            </li>
-          </ul>
-        </div>
+
 
         {/* Action Buttons */}
         <div className="space-y-3">
