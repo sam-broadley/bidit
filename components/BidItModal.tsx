@@ -133,6 +133,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [counterOffer, setCounterOffer] = useState<number | null>(null)
   const [counterTimer, setCounterTimer] = useState<number>(30)
   const [counterTimerActive, setCounterTimerActive] = useState<boolean>(false)
+  const [showJourneyComplete, setShowJourneyComplete] = useState<boolean>(false)
 
   // Load user data from storage on component mount
   useEffect(() => {
@@ -765,7 +766,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
       bidAmount, 
       productPrice 
     })
-    handleClose()
+    setShowJourneyComplete(true)
   }
 
   const handleContinueShopping = () => {
@@ -822,6 +823,11 @@ const BidItModal: React.FC<BidItModalProps> = ({
       console.error('Error accepting counter offer:', err)
       setError('Failed to accept counter offer. Please try again.')
     }
+  }
+
+  const handleJourneyComplete = () => {
+    setShowJourneyComplete(false)
+    handleClose()
   }
 
   const handleRejectCounterOffer = () => {
@@ -1482,21 +1488,41 @@ const BidItModal: React.FC<BidItModalProps> = ({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogPortal>
-        <DialogOverlay className="bg-gray-200/80 backdrop-blur-sm" />
-        <DialogContent className="h-full w-full overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-8 sm:p-6">
-          <DialogHeader className="sr-only">
-            <DialogTitle>
-              {currentStep === 'success' ? 'Bid Successful!' : 
-               currentStep === 'failure' ? 'Bid Results' : 
-               'BidIt - Make an Offer'}
-            </DialogTitle>
-          </DialogHeader>
-          {renderStep()}
-        </DialogContent>
-      </DialogPortal>
-    </Dialog>
+    <>
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogPortal>
+          <DialogOverlay className="bg-gray-200/80 backdrop-blur-sm" />
+          <DialogContent className="h-full w-full overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-8 sm:p-6">
+            <DialogHeader className="sr-only">
+              <DialogTitle>
+                {currentStep === 'success' ? 'Bid Successful!' : 
+                 currentStep === 'failure' ? 'Bid Results' : 
+                 'BidIt - Make an Offer'}
+              </DialogTitle>
+            </DialogHeader>
+            {renderStep()}
+          </DialogContent>
+        </DialogPortal>
+      </Dialog>
+
+      {/* Journey Complete Popup */}
+      {showJourneyComplete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
+          <div className="relative bg-white rounded-2xl p-8 shadow-2xl max-w-sm mx-4 text-center">
+            <div className="text-6xl mb-4">✅</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Journey Complete</h3>
+            <p className="text-gray-600 mb-6">Thank you for using BidIt!</p>
+            <Button 
+              onClick={handleJourneyComplete}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 rounded-xl"
+            >
+              Continue
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
