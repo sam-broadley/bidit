@@ -766,7 +766,9 @@ const BidItModal: React.FC<BidItModalProps> = ({
       bidAmount, 
       productPrice 
     })
-    setShowJourneyComplete(true)
+    
+    // Redirect to demo completion page
+    window.location.href = '/demo-complete'
   }
 
   const handleContinueShopping = () => {
