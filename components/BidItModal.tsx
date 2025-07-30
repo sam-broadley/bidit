@@ -19,7 +19,7 @@ interface BidItModalProps {
   counterBidOverride?: boolean
 }
 
-type BidStep = 'login' | 'product-info' | 'first-bid' | 'second-bid' | 'counter-bid' | 'success' | 'failure'
+type BidStep = 'login' | 'product-info' | 'first-bid' | 'second-bid' | 'counter-bid' | 'success' | 'failure' | 'demo-complete'
 
 interface BidQuality {
   message: string
@@ -133,7 +133,6 @@ const BidItModal: React.FC<BidItModalProps> = ({
   const [counterOffer, setCounterOffer] = useState<number | null>(null)
   const [counterTimer, setCounterTimer] = useState<number>(30)
   const [counterTimerActive, setCounterTimerActive] = useState<boolean>(false)
-  const [showJourneyComplete, setShowJourneyComplete] = useState<boolean>(false)
 
   // Load user data from storage on component mount
   useEffect(() => {
@@ -767,8 +766,9 @@ const BidItModal: React.FC<BidItModalProps> = ({
       productPrice 
     })
     
-    // Redirect to demo completion page
-    window.location.href = '/demo-complete'
+    // Show demo completion step
+    trackStepTiming('demo-complete')
+    setCurrentStep('demo-complete')
   }
 
   const handleContinueShopping = () => {
@@ -828,7 +828,6 @@ const BidItModal: React.FC<BidItModalProps> = ({
   }
 
   const handleJourneyComplete = () => {
-    setShowJourneyComplete(false)
     handleClose()
   }
 
@@ -1484,47 +1483,70 @@ const BidItModal: React.FC<BidItModalProps> = ({
           </div>
         )
 
+      case 'demo-complete':
+        return (
+          <div className="flex flex-col justify-between h-full text-center">
+            {/* BidIt Logo - only show if not cart mode */}
+            {!isCartMode && (
+              <div className="text-center mb-6">
+                <img 
+                  src="https://res.cloudinary.com/stitchify/image/upload/v1752904305/yfyfurus7bwlxwizi9ub.png" 
+                  alt="BidIt" 
+                  className="h-8 mx-auto"
+                />
+              </div>
+            )}
+
+            {/* Demo Complete Content */}
+            <div className="flex-1 flex flex-col justify-center space-y-6">
+              <div className="flex justify-center">
+                <CheckCircle className="w-16 h-16 text-green-500" />
+              </div>
+              
+              <div className="space-y-4">
+                <h3 className="text-2xl font-bold text-gray-900">Demo Complete</h3>
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                  <p className="text-gray-700">
+                    Thank you for trying BidIt! You've successfully completed the bidding journey.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="space-y-3 mt-8">
+              <Button 
+                onClick={handleJourneyComplete} 
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-4 rounded-xl text-base shadow-lg"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        )
+
       default:
         return null
     }
   }
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogPortal>
-          <DialogOverlay className="bg-gray-200/80 backdrop-blur-sm" />
-          <DialogContent className="h-full w-full overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-8 sm:p-6">
-            <DialogHeader className="sr-only">
-              <DialogTitle>
-                {currentStep === 'success' ? 'Bid Successful!' : 
-                 currentStep === 'failure' ? 'Bid Results' : 
-                 'BidIt - Make an Offer'}
-              </DialogTitle>
-            </DialogHeader>
-            {renderStep()}
-          </DialogContent>
-        </DialogPortal>
-      </Dialog>
-
-      {/* Journey Complete Popup */}
-      {showJourneyComplete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-2xl p-8 shadow-2xl max-w-sm mx-4 text-center">
-            <div className="text-6xl mb-4">✅</div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Journey Complete</h3>
-            <p className="text-gray-600 mb-6">Thank you for using BidIt!</p>
-            <Button 
-              onClick={handleJourneyComplete}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 rounded-xl"
-            >
-              Continue
-            </Button>
-          </div>
-        </div>
-      )}
-    </>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogPortal>
+        <DialogOverlay className="bg-gray-200/80 backdrop-blur-sm" />
+        <DialogContent className="h-full w-full overflow-y-auto bg-white !rounded-[20px] shadow-2xl border-0 p-8 sm:p-6">
+          <DialogHeader className="sr-only">
+            <DialogTitle>
+              {currentStep === 'success' ? 'Bid Successful!' : 
+               currentStep === 'failure' ? 'Bid Results' : 
+               currentStep === 'demo-complete' ? 'Demo Complete' :
+               'BidIt - Make an Offer'}
+            </DialogTitle>
+          </DialogHeader>
+          {renderStep()}
+        </DialogContent>
+      </DialogPortal>
+    </Dialog>
   )
 }
 

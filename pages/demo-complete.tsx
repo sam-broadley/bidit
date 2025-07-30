@@ -38,7 +38,7 @@ const DemoComplete: React.FC = () => {
             Go Back
           </button>
           <button 
-            onClick={() => window.close()}
+            onClick={() => window.history.back()}
             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-xl text-base transition-colors"
           >
             Close
