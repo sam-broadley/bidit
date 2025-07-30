@@ -981,7 +981,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
               To continue with Bidit, log in using your The Iconic account to start bidding.
               </p>
               <span className="text-sm text-gray-500 block">
-                This is a demo only - your email is used solely for tracking within the demonstration and isn't linked to your actual The Iconic account.
+                This is a <u>demo only</u> - your email is used solely for tracking within the demonstration and isn't linked to a The Iconic account.
                 </span>
             </div>
 
@@ -1045,7 +1045,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
                 className="login-button"
                 style={{ backgroundColor: '#42abc8', borderRadius: '0px' }}
               >
-                {isLoading ? 'Logging in...' : 'Log in'}
+                {isLoading ? 'Loading...' : 'Continue'}
               </button>
             </div>
 
@@ -1197,7 +1197,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
                 onClick={handleStartBidding} 
                 className="w-full bg-black hover:bg-gray-800 text-white font-normal py-4 rounded-[10px] text-base flex items-center justify-center gap-2"
               >
-                Login with<img src="https://res.cloudinary.com/stitchify/image/upload/v1753082476/vkndfqezsyzv14gwbkxf.png" alt="The Iconic" className="h-3" />
+                Continue with<img src="https://res.cloudinary.com/stitchify/image/upload/v1753082476/vkndfqezsyzv14gwbkxf.png" alt="The Iconic" className="h-3" />
                 {/* <ArrowRight className="w-5 h-5" /> */}
               </Button>
             </div>
