@@ -530,6 +530,16 @@ const BidItModal: React.FC<BidItModalProps> = ({
     console.log('Submitting bid with user ID:', currentUserId, 'from localStorage:', storedUserId)
 
     try {
+      // Determine journey type
+      let journey = 1; // Default to basic bidit
+      
+      if (isCartMode) {
+        journey = 3; // Cart bidit
+      } else if (counterBidOverride || product?.counter_bid) {
+        journey = 2; // Counter-offer bidit (product with counter bid enabled)
+      }
+      // Otherwise journey = 1 (basic bidit)
+      
       // Insert bid - handle case where product is null (no productId provided)
       const { data: bidData, error: bidError } = await supabase
         .from('bids')
@@ -540,7 +550,8 @@ const BidItModal: React.FC<BidItModalProps> = ({
           shopify_variant_id: shopifyVariantId ? parseInt(shopifyVariantId) : null,
           cart_id: cartId ? parseInt(cartId) : null,
           amount: amount,
-          status: 'pending'
+          status: 'pending',
+          journey: journey
         })
         .select()
         .single()
@@ -552,13 +563,15 @@ const BidItModal: React.FC<BidItModalProps> = ({
         bidId: bidData.id, 
         amount,
         mode: isCartMode ? 'cart' : 'product',
-        cartId: cartId || null
+        cartId: cartId || null,
+        journey: journey
       })
       track('bidit_bid_submitted', { 
         productId: shopifyProductId || 'cart', 
         productTitle: decodedProductTitle, 
         bidAmount: amount, 
-        productPrice 
+        productPrice,
+        journey: journey
       })
 
       // Simulate bid evaluation (in real app, this would be an edge function)
