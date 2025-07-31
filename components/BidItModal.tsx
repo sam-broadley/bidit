@@ -570,7 +570,7 @@ const BidItModal: React.FC<BidItModalProps> = ({
       let isAccepted = false
       if (isCartMode) {
         // Cart mode - use 30% max discount
-        isAccepted = amount >= effectivePrice || (discountPercent >= 0 && discountPercent <= 30)
+        isAccepted = amount >= effectivePrice || (discountPercent >= 0 && discountPercent <= 25)
       } else {
         // Product mode - use product-specific discount settings
         isAccepted = amount >= effectivePrice || (!!product && discountPercent >= (product.min_discount_percent || 0) && discountPercent <= (product.max_discount_percent || 100))
